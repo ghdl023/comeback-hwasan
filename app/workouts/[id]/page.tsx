@@ -2,7 +2,8 @@
 
 import { useAuth } from "@/components/auth-provider";
 import { getWorkout, getWorkoutSets, getExercises, deleteWorkout } from "@/lib/firebase/firestore";
-import type { Workout, WorkoutSet, Exercise } from "@/lib/types";
+import type { Workout, WorkoutSet, Exercise, MuscleGroup } from "@/lib/types";
+import { MUSCLE_GROUP_LABELS } from "@/lib/types";
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
@@ -18,6 +19,7 @@ import {
   Dumbbell,
 } from "lucide-react";
 import { format } from "date-fns";
+import { ko } from "date-fns/locale";
 
 export default function WorkoutDetailPage() {
   const { user } = useAuth();
@@ -55,7 +57,7 @@ export default function WorkoutDetailPage() {
   }, [user, id]);
 
   const handleDelete = async () => {
-    if (!confirm("Delete this workout? This cannot be undone.")) return;
+    if (!confirm("이 운동 기록을 삭제하시겠습니까?")) return;
     setDeleting(true);
     await deleteWorkout(id);
     router.push("/workouts");
@@ -71,10 +73,10 @@ export default function WorkoutDetailPage() {
 
   if (!workout) {
     return (
-      <div className="mx-auto max-w-3xl px-4 py-8 text-center space-y-4">
-        <p className="text-muted-foreground">Workout not found.</p>
+      <div className="mx-auto max-w-lg px-4 py-8 text-center space-y-4">
+        <p className="text-muted-foreground text-sm">운동 기록을 찾을 수 없습니다.</p>
         <Link href="/workouts">
-          <Button variant="outline">Back to Workouts</Button>
+          <Button variant="outline" size="sm">운동기록으로 돌아가기</Button>
         </Link>
       </div>
     );
@@ -96,26 +98,26 @@ export default function WorkoutDetailPage() {
   }, 0);
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8 space-y-6">
-      <div className="flex items-center gap-3">
+    <div className="mx-auto max-w-lg md:max-w-3xl px-4 py-4 md:py-8 space-y-4 md:space-y-6 pb-20 md:pb-8">
+      <div className="flex items-center gap-2">
         <Link href="/workouts">
-          <Button variant="ghost" size="icon" data-testid="button-back">
-            <ArrowLeft className="h-4 w-4" />
+          <Button variant="ghost" size="icon" className="h-9 w-9" data-testid="button-back">
+            <ArrowLeft className="h-5 w-5" />
           </Button>
         </Link>
         <div className="flex-1 min-w-0">
-          <h1 className="text-2xl font-bold truncate" data-testid="text-workout-title">
+          <h1 className="text-lg md:text-2xl font-bold truncate" data-testid="text-workout-title">
             {workout.title}
           </h1>
-          <div className="flex items-center gap-3 text-sm text-muted-foreground mt-1 flex-wrap">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5 flex-wrap">
             <span className="flex items-center gap-1">
-              <CalendarDays className="h-3.5 w-3.5" />
-              {format(new Date(workout.performed_at), "MMMM d, yyyy")}
+              <CalendarDays className="h-3 w-3" />
+              {format(new Date(workout.performed_at), "yyyy년 M월 d일 (EEE)", { locale: ko })}
             </span>
             {workout.duration_minutes && (
               <span className="flex items-center gap-1">
-                <Clock className="h-3.5 w-3.5" />
-                {workout.duration_minutes} min
+                <Clock className="h-3 w-3" />
+                {workout.duration_minutes}분
               </span>
             )}
           </div>
@@ -125,92 +127,92 @@ export default function WorkoutDetailPage() {
           size="sm"
           onClick={handleDelete}
           disabled={deleting}
-          className="shrink-0"
+          className="shrink-0 h-8"
           data-testid="button-delete-workout"
         >
           {deleting ? (
-            <Loader2 className="h-4 w-4 animate-spin" />
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
           ) : (
-            <Trash2 className="h-4 w-4" />
+            <Trash2 className="h-3.5 w-3.5" />
           )}
-          Delete
+          <span className="hidden sm:inline">삭제</span>
         </Button>
       </div>
 
       {workout.notes && (
-        <Card className="p-4">
+        <Card className="p-3 md:p-4">
           <p className="text-sm text-muted-foreground">{workout.notes}</p>
         </Card>
       )}
 
-      <div className="grid grid-cols-3 gap-4">
-        <Card className="p-4 text-center">
-          <p className="text-2xl font-bold" data-testid="text-exercise-count">
+      <div className="grid grid-cols-3 gap-2 md:gap-4">
+        <Card className="p-3 md:p-4 text-center">
+          <p className="text-lg md:text-2xl font-bold" data-testid="text-exercise-count">
             {Object.keys(groupedByExercise).length}
           </p>
-          <p className="text-sm text-muted-foreground">Exercises</p>
+          <p className="text-[10px] md:text-sm text-muted-foreground">종목</p>
         </Card>
-        <Card className="p-4 text-center">
-          <p className="text-2xl font-bold" data-testid="text-set-count">
+        <Card className="p-3 md:p-4 text-center">
+          <p className="text-lg md:text-2xl font-bold" data-testid="text-set-count">
             {sets.length}
           </p>
-          <p className="text-sm text-muted-foreground">Sets</p>
+          <p className="text-[10px] md:text-sm text-muted-foreground">세트</p>
         </Card>
-        <Card className="p-4 text-center">
-          <p className="text-2xl font-bold" data-testid="text-volume">
+        <Card className="p-3 md:p-4 text-center">
+          <p className="text-lg md:text-2xl font-bold" data-testid="text-volume">
             {totalVolume > 0 ? `${(totalVolume / 1000).toFixed(1)}t` : "-"}
           </p>
-          <p className="text-sm text-muted-foreground">Volume</p>
+          <p className="text-[10px] md:text-sm text-muted-foreground">볼륨</p>
         </Card>
       </div>
 
-      <div className="space-y-4">
-        <h2 className="text-lg font-semibold">Exercises & Sets</h2>
+      <div className="space-y-3">
+        <h2 className="text-base md:text-lg font-semibold">운동 상세</h2>
 
         {Object.entries(groupedByExercise).length === 0 ? (
           <Card className="p-8 text-center">
             <p className="text-sm text-muted-foreground">
-              No sets recorded for this workout.
+              기록된 세트가 없습니다.
             </p>
           </Card>
         ) : (
           Object.entries(groupedByExercise).map(([exerciseId, exSets]) => {
             const exercise = exerciseMap.get(exerciseId);
             return (
-              <Card key={exerciseId} className="p-4 space-y-3">
-                <div className="flex items-center gap-3">
+              <Card key={exerciseId} className="overflow-hidden">
+                <div className="flex items-center gap-3 px-3.5 md:px-4 py-3 bg-muted/30 border-b">
                   <div className="flex items-center justify-center w-8 h-8 rounded-md bg-primary/10 shrink-0">
                     <Dumbbell className="h-4 w-4 text-primary" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium truncate">
-                      {exercise?.name || "Unknown Exercise"}
+                    <p className="text-sm font-medium truncate">
+                      {exercise?.name || "알 수 없는 운동"}
                     </p>
                     {exercise?.muscle_group && (
-                      <Badge variant="secondary" className="mt-1">
-                        {exercise.muscle_group.replace("_", " ")}
+                      <Badge variant="outline" className="mt-0.5 text-[10px] h-5">
+                        {MUSCLE_GROUP_LABELS[exercise.muscle_group as MuscleGroup] || exercise.muscle_group}
                       </Badge>
                     )}
                   </div>
                 </div>
 
-                <div className="border rounded-md overflow-hidden">
-                  <div className="grid grid-cols-3 gap-0 text-xs font-medium text-muted-foreground p-2 bg-muted/50">
-                    <span>Set</span>
-                    <span>Reps</span>
-                    <span>Weight (kg)</span>
+                <div className="px-3.5 md:px-4 py-2">
+                  <div className="grid grid-cols-3 gap-0 text-[10px] font-medium text-muted-foreground uppercase tracking-wider pb-1.5">
+                    <span>세트</span>
+                    <span>횟수</span>
+                    <span>무게 (kg)</span>
                   </div>
                   {exSets.map((s) => (
                     <div
                       key={s.id}
-                      className="grid grid-cols-3 gap-0 text-sm p-2 border-t"
+                      className="grid grid-cols-3 gap-0 text-sm py-1.5 border-t border-muted/50"
                       data-testid={`row-set-${s.id}`}
                     >
-                      <span className="font-mono text-muted-foreground">
+                      <span className="font-mono text-xs text-muted-foreground">
                         {s.set_number}
                       </span>
-                      <span>{s.reps ?? "-"}</span>
-                      <span>{s.weight ? Number(s.weight) : "-"}</span>
+                      <span className="text-sm">{s.reps ?? "-"}</span>
+                      <span className="text-sm">{s.weight ? Number(s.weight) : "-"}</span>
                     </div>
                   ))}
                 </div>

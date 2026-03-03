@@ -17,6 +17,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { format } from "date-fns";
+import { ko } from "date-fns/locale";
 
 export default function WorkoutsPage() {
   const { user } = useAuth();
@@ -48,7 +49,7 @@ export default function WorkoutsPage() {
   const handleDelete = async (id: string, e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!confirm("Delete this workout? This cannot be undone.")) return;
+    if (!confirm("이 운동 기록을 삭제하시겠습니까?")) return;
     setDeleting(id);
     await deleteWorkout(id);
     setWorkouts((prev) => prev.filter((w) => w.id !== id));
@@ -65,44 +66,44 @@ export default function WorkoutsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-8 space-y-6">
-      <div className="flex items-center justify-between gap-4 flex-wrap">
+    <div className="mx-auto max-w-lg md:max-w-4xl px-4 py-5 md:py-8 space-y-4 md:space-y-6 pb-20 md:pb-8">
+      <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold" data-testid="text-workouts-title">
-            Workouts
+          <h1 className="text-xl md:text-2xl font-bold" data-testid="text-workouts-title">
+            운동기록
           </h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            {workouts.length} workout{workouts.length !== 1 ? "s" : ""} logged
+          <p className="text-muted-foreground text-xs md:text-sm mt-0.5">
+            총 {workouts.length}회 운동
           </p>
         </div>
         <Link href="/workouts/new">
-          <Button data-testid="button-new-workout">
+          <Button size="sm" className="h-9 gap-1.5" data-testid="button-new-workout">
             <Plus className="h-4 w-4" />
-            New Workout
+            새 운동
           </Button>
         </Link>
       </div>
 
       {workouts.length === 0 ? (
-        <Card className="p-12 text-center space-y-4">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-muted mx-auto">
-            <Dumbbell className="h-8 w-8 text-muted-foreground" />
+        <Card className="p-10 md:p-12 text-center space-y-4">
+          <div className="inline-flex items-center justify-center w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-muted mx-auto">
+            <Dumbbell className="h-7 w-7 md:h-8 md:w-8 text-muted-foreground" />
           </div>
           <div>
-            <p className="font-medium">No workouts yet</p>
-            <p className="text-sm text-muted-foreground mt-1">
-              Start by logging your first workout.
+            <p className="font-medium text-sm">아직 운동 기록이 없습니다</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              첫 운동을 기록해보세요!
             </p>
           </div>
           <Link href="/workouts/new">
-            <Button data-testid="button-first-workout">
+            <Button size="sm" data-testid="button-first-workout">
               <Plus className="h-4 w-4" />
-              Log Your First Workout
+              첫 운동 기록하기
             </Button>
           </Link>
         </Card>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-2">
           {workouts.map((workout) => {
             const workoutSets = sets.filter(
               (s) => s.workout_id === workout.id
@@ -120,47 +121,47 @@ export default function WorkoutsPage() {
                 href={`/workouts/${workout.id}`}
                 data-testid={`link-workout-${workout.id}`}
               >
-                <Card className="p-4 hover-elevate cursor-pointer transition-all">
-                  <div className="flex items-center justify-between gap-4">
-                    <div className="flex items-center gap-4 min-w-0">
-                      <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10 shrink-0">
-                        <Dumbbell className="h-5 w-5 text-primary" />
+                <Card className="p-3.5 md:p-4 hover-elevate cursor-pointer transition-all">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="flex items-center justify-center w-9 h-9 md:w-10 md:h-10 rounded-lg bg-primary/10 shrink-0">
+                        <Dumbbell className="h-4 w-4 md:h-5 md:w-5 text-primary" />
                       </div>
                       <div className="min-w-0">
-                        <p className="font-medium truncate">{workout.title}</p>
-                        <div className="flex items-center gap-3 text-sm text-muted-foreground mt-0.5 flex-wrap">
+                        <p className="text-sm font-medium truncate">{workout.title}</p>
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5 flex-wrap">
                           <span className="flex items-center gap-1">
-                            <CalendarDays className="h-3.5 w-3.5" />
-                            {format(new Date(workout.performed_at), "MMM d, yyyy")}
+                            <CalendarDays className="h-3 w-3" />
+                            {format(new Date(workout.performed_at), "M월 d일 (EEE)", { locale: ko })}
                           </span>
                           {workout.duration_minutes && (
                             <span className="flex items-center gap-1">
-                              <Clock className="h-3.5 w-3.5" />
-                              {workout.duration_minutes}min
+                              <Clock className="h-3 w-3" />
+                              {workout.duration_minutes}분
                             </span>
                           )}
                           <span>
-                            {uniqueExercises.size} ex &middot;{" "}
-                            {workoutSets.length} sets
+                            {uniqueExercises.size}종목 · {workoutSets.length}세트
                           </span>
                           {volume > 0 && (
-                            <span>{(volume / 1000).toFixed(1)}t vol</span>
+                            <span>{(volume / 1000).toFixed(1)}t</span>
                           )}
                         </div>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex items-center gap-1 shrink-0">
                       <Button
                         variant="ghost"
                         size="icon"
+                        className="h-8 w-8"
                         onClick={(e) => handleDelete(workout.id, e)}
                         disabled={deleting === workout.id}
                         data-testid={`button-delete-workout-${workout.id}`}
                       >
                         {deleting === workout.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
                         ) : (
-                          <Trash2 className="h-4 w-4 text-muted-foreground" />
+                          <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
                         )}
                       </Button>
                       <ChevronRight className="h-4 w-4 text-muted-foreground" />

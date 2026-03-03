@@ -74,15 +74,63 @@ export async function getExercises(userId: string): Promise<Exercise[]> {
   return snap.docs.map((d) => serializeDoc<Exercise>(d.id, d.data()));
 }
 
+export async function getExercisesByMuscleGroup(
+  userId: string,
+  muscleGroup: string
+): Promise<Exercise[]> {
+  const q = query(
+    collection(db, "exercises"),
+    where("user_id", "==", userId),
+    where("muscle_group", "==", muscleGroup),
+    where("parent_id", "==", null),
+    orderBy("name")
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => serializeDoc<Exercise>(d.id, d.data()));
+}
+
+export async function getChildExercises(
+  userId: string,
+  parentId: string
+): Promise<Exercise[]> {
+  const q = query(
+    collection(db, "exercises"),
+    where("user_id", "==", userId),
+    where("parent_id", "==", parentId),
+    orderBy("name")
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => serializeDoc<Exercise>(d.id, d.data()));
+}
+
+export async function getExerciseCountsByMuscleGroup(
+  userId: string
+): Promise<Record<string, number>> {
+  const q = query(
+    collection(db, "exercises"),
+    where("user_id", "==", userId)
+  );
+  const snap = await getDocs(q);
+  const counts: Record<string, number> = {};
+  snap.docs.forEach((d) => {
+    const mg = d.data().muscle_group;
+    if (mg) {
+      counts[mg] = (counts[mg] || 0) + 1;
+    }
+  });
+  return counts;
+}
+
 export async function addExercise(
   data: Omit<Exercise, "id" | "created_at">
 ): Promise<Exercise> {
   const now = new Date().toISOString();
   const docRef = await addDoc(collection(db, "exercises"), {
     ...data,
+    parent_id: data.parent_id ?? null,
     created_at: now,
   });
-  return { id: docRef.id, ...data, created_at: now } as Exercise;
+  return { id: docRef.id, ...data, parent_id: data.parent_id ?? null, created_at: now } as Exercise;
 }
 
 export async function updateExercise(

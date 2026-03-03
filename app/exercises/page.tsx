@@ -7,8 +7,8 @@ import {
   updateExercise,
   deleteExercise,
 } from "@/lib/firebase/firestore";
-import type { Exercise } from "@/lib/types";
-import { EXERCISE_CATEGORIES, MUSCLE_GROUPS } from "@/lib/types";
+import type { Exercise, MuscleGroup } from "@/lib/types";
+import { EXERCISE_CATEGORIES, MUSCLE_GROUPS, MUSCLE_GROUP_LABELS } from "@/lib/types";
 import { useEffect, useState, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -72,7 +72,7 @@ export default function ExercisesPage() {
 
   const handleAdd = async () => {
     if (!name.trim() || !user) {
-      setError("Exercise name is required.");
+      setError("운동 이름을 입력해주세요.");
       return;
     }
     setSaving(true);
@@ -83,6 +83,7 @@ export default function ExercisesPage() {
         name: name.trim(),
         category,
         muscle_group: muscleGroup || null,
+        parent_id: null,
       });
       setExercises((prev) =>
         [...prev, data].sort((a, b) => a.name.localeCompare(b.name))
@@ -92,13 +93,13 @@ export default function ExercisesPage() {
       setMuscleGroup("");
       setShowForm(false);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to add exercise");
+      setError(err instanceof Error ? err.message : "운동 추가에 실패했습니다");
     }
     setSaving(false);
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Delete this exercise? Related sets will also be removed.")) return;
+    if (!confirm("이 운동을 삭제하시겠습니까?")) return;
     await deleteExercise(id);
     setExercises((prev) => prev.filter((e) => e.id !== id));
   };
@@ -133,7 +134,7 @@ export default function ExercisesPage() {
       );
       cancelEdit();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to update");
+      setError(err instanceof Error ? err.message : "수정에 실패했습니다");
     }
     setUpdating(false);
   };
@@ -156,113 +157,120 @@ export default function ExercisesPage() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-8 space-y-6">
-      <div className="flex items-center justify-between gap-4 flex-wrap">
+    <div className="mx-auto max-w-lg md:max-w-4xl px-4 py-5 md:py-8 space-y-4 md:space-y-6 pb-20 md:pb-8">
+      <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold" data-testid="text-exercises-title">
-            Exercise Library
+          <h1 className="text-xl md:text-2xl font-bold" data-testid="text-exercises-title">
+            운동목록
           </h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            {exercises.length} exercise{exercises.length !== 1 ? "s" : ""}
+          <p className="text-muted-foreground text-xs md:text-sm mt-0.5">
+            총 {exercises.length}개 운동
           </p>
         </div>
         <Button
+          size="sm"
+          className="h-9 gap-1.5"
           onClick={() => setShowForm(!showForm)}
           data-testid="button-add-exercise"
         >
           <Plus className="h-4 w-4" />
-          Add Exercise
+          <span className="hidden sm:inline">추가</span>
         </Button>
       </div>
 
       {error && (
-        <div className="p-3 rounded-md bg-destructive/10 text-destructive text-sm" data-testid="text-error">
+        <div className="p-3 rounded-lg bg-destructive/10 text-destructive text-sm" data-testid="text-error">
           {error}
         </div>
       )}
 
       {showForm && (
-        <Card className="p-5 space-y-4 border-dashed border-2">
-          <p className="font-medium">New Exercise</p>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label>Name *</Label>
+        <Card className="p-4 space-y-3 border-dashed border-2">
+          <p className="text-sm font-medium">새 운동 추가</p>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs">이름 *</Label>
               <Input
-                placeholder="e.g., Bench Press"
+                placeholder="예: 벤치프레스"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
+                className="h-9"
                 data-testid="input-exercise-name"
               />
             </div>
-            <div className="space-y-2">
-              <Label>Category</Label>
-              <Select value={category} onValueChange={setCategory}>
-                <SelectTrigger data-testid="select-exercise-category">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {EXERCISE_CATEGORIES.map((c) => (
-                    <SelectItem key={c} value={c}>
-                      {c.charAt(0).toUpperCase() + c.slice(1)}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Muscle Group</Label>
-              <Select value={muscleGroup} onValueChange={setMuscleGroup}>
-                <SelectTrigger data-testid="select-exercise-muscle">
-                  <SelectValue placeholder="Select..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {MUSCLE_GROUPS.map((m) => (
-                    <SelectItem key={m} value={m}>
-                      {m.replace("_", " ").replace(/\b\w/g, (c) => c.toUpperCase())}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs">카테고리</Label>
+                <Select value={category} onValueChange={setCategory}>
+                  <SelectTrigger className="h-9" data-testid="select-exercise-category">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {EXERCISE_CATEGORIES.map((c) => (
+                      <SelectItem key={c} value={c}>
+                        {c.charAt(0).toUpperCase() + c.slice(1)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">운동 부위</Label>
+                <Select value={muscleGroup} onValueChange={setMuscleGroup}>
+                  <SelectTrigger className="h-9" data-testid="select-exercise-muscle">
+                    <SelectValue placeholder="선택..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {MUSCLE_GROUPS.map((m) => (
+                      <SelectItem key={m} value={m}>
+                        {MUSCLE_GROUP_LABELS[m]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
           <div className="flex gap-2">
             <Button
               size="sm"
+              className="h-8"
               onClick={handleAdd}
               disabled={saving || !name.trim()}
               data-testid="button-save-exercise"
             >
-              {saving && <Loader2 className="h-4 w-4 animate-spin" />}
-              Save
+              {saving && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+              저장
             </Button>
             <Button
               variant="ghost"
               size="sm"
+              className="h-8"
               onClick={() => setShowForm(false)}
             >
-              Cancel
+              취소
             </Button>
           </div>
         </Card>
       )}
 
-      <div className="flex items-center gap-3 flex-wrap">
-        <div className="relative flex-1 min-w-[200px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+      <div className="flex items-center gap-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search exercises..."
+            placeholder="운동 검색..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
+            className="pl-8 h-9 text-sm"
             data-testid="input-search-exercises"
           />
         </div>
         <Select value={filterCategory} onValueChange={setFilterCategory}>
-          <SelectTrigger className="w-[150px]" data-testid="select-filter-category">
+          <SelectTrigger className="w-[110px] md:w-[150px] h-9 text-sm" data-testid="select-filter-category">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">All Categories</SelectItem>
+            <SelectItem value="all">전체</SelectItem>
             {EXERCISE_CATEGORIES.map((c) => (
               <SelectItem key={c} value={c}>
                 {c.charAt(0).toUpperCase() + c.slice(1)}
@@ -273,110 +281,120 @@ export default function ExercisesPage() {
       </div>
 
       {filtered.length === 0 ? (
-        <Card className="p-12 text-center space-y-4">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-muted mx-auto">
-            <ListChecks className="h-8 w-8 text-muted-foreground" />
+        <Card className="p-10 md:p-12 text-center space-y-3">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-muted mx-auto">
+            <ListChecks className="h-7 w-7 text-muted-foreground" />
           </div>
           <div>
-            <p className="font-medium">
+            <p className="font-medium text-sm">
               {exercises.length === 0
-                ? "No exercises yet"
-                : "No exercises match your search"}
+                ? "아직 등록된 운동이 없습니다"
+                : "검색 결과가 없습니다"}
             </p>
-            <p className="text-sm text-muted-foreground mt-1">
+            <p className="text-xs text-muted-foreground mt-1">
               {exercises.length === 0
-                ? 'Add exercises to build your personal library.'
-                : "Try adjusting your search or filter."}
+                ? "운동을 추가하여 나만의 라이브러리를 만들어보세요."
+                : "검색어나 필터를 변경해보세요."}
             </p>
           </div>
         </Card>
       ) : (
-        <div className="space-y-2">
+        <div className="space-y-1.5">
           {filtered.map((ex) => (
-            <Card key={ex.id} className="p-4" data-testid={`card-exercise-${ex.id}`}>
+            <Card key={ex.id} className="p-3 md:p-4" data-testid={`card-exercise-${ex.id}`}>
               {editingId === ex.id ? (
-                <div className="flex items-center gap-3 flex-wrap">
+                <div className="space-y-3">
                   <Input
                     value={editName}
                     onChange={(e) => setEditName(e.target.value)}
-                    className="flex-1 min-w-[120px]"
+                    className="h-9"
                     data-testid="input-edit-name"
                   />
-                  <Select value={editCategory} onValueChange={setEditCategory}>
-                    <SelectTrigger className="w-[120px]">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {EXERCISE_CATEGORIES.map((c) => (
-                        <SelectItem key={c} value={c}>
-                          {c.charAt(0).toUpperCase() + c.slice(1)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Select value={editMuscle || "none"} onValueChange={(v) => setEditMuscle(v === "none" ? "" : v)}>
-                    <SelectTrigger className="w-[130px]">
-                      <SelectValue placeholder="Muscle" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">None</SelectItem>
-                      {MUSCLE_GROUPS.map((m) => (
-                        <SelectItem key={m} value={m}>
-                          {m.replace("_", " ").replace(/\b\w/g, (c) => c.toUpperCase())}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Button
-                    size="icon"
-                    onClick={saveEdit}
-                    disabled={updating}
-                    data-testid="button-save-edit"
-                  >
-                    {updating ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      <Check className="h-4 w-4" />
-                    )}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={cancelEdit}
-                    data-testid="button-cancel-edit"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Select value={editCategory} onValueChange={setEditCategory}>
+                      <SelectTrigger className="h-9">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {EXERCISE_CATEGORIES.map((c) => (
+                          <SelectItem key={c} value={c}>
+                            {c.charAt(0).toUpperCase() + c.slice(1)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Select value={editMuscle || "none"} onValueChange={(v) => setEditMuscle(v === "none" ? "" : v)}>
+                      <SelectTrigger className="h-9">
+                        <SelectValue placeholder="부위" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">없음</SelectItem>
+                        {MUSCLE_GROUPS.map((m) => (
+                          <SelectItem key={m} value={m}>
+                            {MUSCLE_GROUP_LABELS[m]}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      className="h-8"
+                      onClick={saveEdit}
+                      disabled={updating}
+                      data-testid="button-save-edit"
+                    >
+                      {updating ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Check className="h-3.5 w-3.5" />
+                      )}
+                      저장
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8"
+                      onClick={cancelEdit}
+                      data-testid="button-cancel-edit"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                      취소
+                    </Button>
+                  </div>
                 </div>
               ) : (
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3 min-w-0 flex-wrap">
-                    <p className="font-medium">{ex.name}</p>
-                    <Badge variant="secondary">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0 flex-wrap">
+                    <p className="text-sm font-medium">{ex.name}</p>
+                    <Badge variant="secondary" className="text-[10px] h-5">
                       {ex.category}
                     </Badge>
                     {ex.muscle_group && (
-                      <Badge variant="outline">
-                        {ex.muscle_group.replace("_", " ")}
+                      <Badge variant="outline" className="text-[10px] h-5">
+                        {MUSCLE_GROUP_LABELS[ex.muscle_group as MuscleGroup] || ex.muscle_group}
                       </Badge>
                     )}
                   </div>
-                  <div className="flex items-center gap-1 shrink-0">
+                  <div className="flex items-center gap-0.5 shrink-0">
                     <Button
                       variant="ghost"
                       size="icon"
+                      className="h-8 w-8"
                       onClick={() => startEdit(ex)}
                       data-testid={`button-edit-${ex.id}`}
                     >
-                      <Pencil className="h-4 w-4 text-muted-foreground" />
+                      <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
                     </Button>
                     <Button
                       variant="ghost"
                       size="icon"
+                      className="h-8 w-8"
                       onClick={() => handleDelete(ex.id)}
                       data-testid={`button-delete-${ex.id}`}
                     >
-                      <Trash2 className="h-4 w-4 text-muted-foreground" />
+                      <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
                     </Button>
                   </div>
                 </div>

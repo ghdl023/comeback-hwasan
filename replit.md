@@ -4,6 +4,7 @@
 Next.js 15 (App Router) + TypeScript web app for personal fitness/weight workout tracking.
 Uses Firebase (Firestore + Firebase Auth) as the backend. No custom server — frontend-only deployment.
 App name: comback-hwasan (화산귀환). Plum blossom (매화) logo theme.
+Primary target: mobile devices (mobile-first responsive design with bottom tab navigation).
 
 ## Tech Stack
 - **Framework**: Next.js 15 (App Router)
@@ -17,30 +18,46 @@ App name: comback-hwasan (화산귀환). Plum blossom (매화) logo theme.
 ```
 app/                    - Next.js pages (App Router)
   layout.tsx            - Root layout
-  page.tsx              - Landing page
+  page.tsx              - Root redirect to /login
   login/page.tsx        - Login page (Google OAuth)
   dashboard/            - Dashboard (stats, recent workouts)
   workouts/             - Workout CRUD (list/create/detail)
+    new/page.tsx        - New workout with exercise selector
   exercises/            - Exercise library management
 components/             - React components
   auth-provider.tsx     - Firebase Auth context provider (Google popup)
   auth-guard.tsx        - Client-side route protection
   client-providers.tsx  - Client-side providers wrapper (hydration fix)
-  navbar.tsx            - Top navigation bar
+  navbar.tsx            - Top nav + mobile bottom tab navigation
+  exercise-selector.tsx - Full-screen exercise selection (muscle group → exercise → sub-exercise)
+  plum-blossom.tsx      - Plum blossom SVG logo
   theme-provider.tsx    - Dark mode provider
   ui/                   - shadcn/ui base components
 lib/
   firebase/config.ts    - Firebase app/auth/db initialization
   firebase/firestore.ts - Firestore CRUD functions
-  types.ts              - TypeScript types (Exercise, Workout, WorkoutSet)
+  types.ts              - TypeScript types, muscle groups, exercise categories
   utils.ts              - Utility functions (cn)
 middleware.ts           - Next.js middleware (passthrough — auth is client-side)
 ```
 
 ## Firestore Collections
-- `exercises` - User's exercise library (fields: user_id, name, category, muscle_group, created_at)
-- `workouts` - Workout sessions (fields: user_id, title, performed_at, duration_minutes, notes, created_at)
-- `workout_sets` - Sets within workouts (fields: workout_id, exercise_id, set_number, reps, weight, created_at)
+- `users` - User profiles (uid, email, display_name, photo_url, created_at, last_login_at)
+- `exercises` - User's exercise library (user_id, name, category, muscle_group, parent_id, created_at)
+  - Supports hierarchical structure: muscle_group → parent exercise → sub-exercises via parent_id
+- `workouts` - Workout sessions (user_id, title, performed_at, duration_minutes, notes, created_at)
+- `workout_sets` - Sets within workouts (workout_id, exercise_id, set_number, reps, weight, created_at)
+
+## Muscle Groups (13)
+목, 승모근, 어깨, 가슴, 등, 삼두, 이두, 전완, 복부, 허리, 엉덩이, 하체, 종아리
+
+## Exercise Selector Flow
+1. Full-screen overlay with fixed header (back, search, add) and fixed footer (selected exercises)
+2. Body shows 13 muscle groups with exercise counts
+3. Click muscle group → shows exercises for that group (parent_id=null)
+4. Click exercise → shows sub-exercises (parent_id=exercise.id)
+5. Select sub-exercise → adds to footer selection list
+6. Confirm → returns selected exercises to workout form
 
 ## Environment Variables
 - `NEXT_PUBLIC_FIREBASE_API_KEY` - Firebase API key
@@ -62,3 +79,6 @@ middleware.ts           - Next.js middleware (passthrough — auth is client-sid
 - `.npmrc` has `legacy-peer-deps=true` to resolve framer-motion ↔ React 19 peer dependency conflict
 - Hydration mismatch warning in dev is a Replit iframe proxy artifact (harmless in production)
 - `getWorkoutSetsByUser()` fetches sets in chunks of 30 (Firestore `in` query limit)
+- All UI text is in Korean (한국어)
+- Mobile bottom tab navigation visible on screens < md breakpoint
+- Safe area insets handled for iOS notch devices

@@ -15,8 +15,10 @@ import {
   Loader2,
   Clock,
   ChevronRight,
+  Flame,
 } from "lucide-react";
 import { format, startOfWeek, endOfWeek, isWithinInterval } from "date-fns";
+import { ko } from "date-fns/locale";
 
 export default function DashboardPage() {
   const { user } = useAuth();
@@ -73,101 +75,101 @@ export default function DashboardPage() {
 
   const stats = [
     {
-      label: "Total Workouts",
+      label: "총 운동",
       value: workouts.length,
       icon: Dumbbell,
       color: "text-primary",
       bg: "bg-primary/10",
     },
     {
-      label: "This Week",
+      label: "이번 주",
       value: thisWeekWorkouts.length,
-      icon: CalendarDays,
-      color: "text-chart-2",
-      bg: "bg-chart-2/10",
+      icon: Flame,
+      color: "text-orange-500",
+      bg: "bg-orange-500/10",
     },
     {
-      label: "Total Sets",
+      label: "총 세트",
       value: totalSets,
       icon: TrendingUp,
-      color: "text-chart-3",
-      bg: "bg-chart-3/10",
+      color: "text-emerald-500",
+      bg: "bg-emerald-500/10",
     },
     {
-      label: "Total Volume",
+      label: "총 볼륨",
       value: `${(totalVolume / 1000).toFixed(1)}t`,
       icon: TrendingUp,
-      color: "text-chart-4",
-      bg: "bg-chart-4/10",
+      color: "text-purple-500",
+      bg: "bg-purple-500/10",
     },
   ];
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8 space-y-8">
-      <div className="flex items-center justify-between gap-4 flex-wrap">
+    <div className="mx-auto max-w-lg md:max-w-6xl px-4 py-5 md:py-8 space-y-5 md:space-y-8 pb-20 md:pb-8">
+      <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold" data-testid="text-dashboard-title">
-            Dashboard
+          <h1 className="text-xl md:text-2xl font-bold" data-testid="text-dashboard-title">
+            대시보드
           </h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            Welcome back{user?.displayName ? `, ${user.displayName}` : ""}!
+          <p className="text-muted-foreground text-sm mt-0.5">
+            {user?.displayName ? `${user.displayName}님, 안녕하세요!` : "환영합니다!"}
           </p>
         </div>
         <Link href="/workouts/new">
-          <Button data-testid="button-new-workout">
+          <Button size="sm" className="h-9 gap-1.5" data-testid="button-new-workout">
             <Plus className="h-4 w-4" />
-            New Workout
+            <span className="hidden sm:inline">새 운동</span>
           </Button>
         </Link>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
         {stats.map((stat) => (
-          <Card key={stat.label} className="p-5 space-y-3">
-            <div className="flex items-center gap-3">
-              <div className={`flex items-center justify-center w-9 h-9 rounded-lg ${stat.bg}`}>
+          <Card key={stat.label} className="p-3.5 md:p-5 space-y-2">
+            <div className="flex items-center gap-2">
+              <div className={`flex items-center justify-center w-8 h-8 md:w-9 md:h-9 rounded-lg ${stat.bg}`}>
                 <stat.icon className={`h-4 w-4 ${stat.color}`} />
               </div>
-              <span className="text-sm text-muted-foreground">{stat.label}</span>
+              <span className="text-xs md:text-sm text-muted-foreground">{stat.label}</span>
             </div>
-            <p className="text-2xl font-bold" data-testid={`text-stat-${stat.label.toLowerCase().replace(/\s+/g, "-")}`}>
+            <p className="text-xl md:text-2xl font-bold" data-testid={`text-stat-${stat.label}`}>
               {stat.value}
             </p>
           </Card>
         ))}
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-3">
         <div className="flex items-center justify-between gap-2">
-          <h2 className="text-lg font-semibold">Recent Workouts</h2>
+          <h2 className="text-base md:text-lg font-semibold">최근 운동</h2>
           <Link href="/workouts">
-            <Button variant="ghost" size="sm" data-testid="link-all-workouts">
-              View All
-              <ChevronRight className="h-4 w-4" />
+            <Button variant="ghost" size="sm" className="h-8 text-xs" data-testid="link-all-workouts">
+              전체보기
+              <ChevronRight className="h-3.5 w-3.5" />
             </Button>
           </Link>
         </div>
 
         {workouts.length === 0 ? (
-          <Card className="p-12 text-center space-y-4">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-muted mx-auto">
-              <Dumbbell className="h-8 w-8 text-muted-foreground" />
+          <Card className="p-10 md:p-12 text-center space-y-4">
+            <div className="inline-flex items-center justify-center w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-muted mx-auto">
+              <Dumbbell className="h-7 w-7 md:h-8 md:w-8 text-muted-foreground" />
             </div>
             <div>
-              <p className="font-medium">No workouts yet</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                Start logging your first workout to see your progress here.
+              <p className="font-medium text-sm">아직 운동 기록이 없습니다</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                첫 운동을 기록해보세요!
               </p>
             </div>
             <Link href="/workouts/new">
-              <Button data-testid="button-first-workout">
+              <Button size="sm" data-testid="button-first-workout">
                 <Plus className="h-4 w-4" />
-                Log Your First Workout
+                첫 운동 기록하기
               </Button>
             </Link>
           </Card>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-2">
             {workouts.slice(0, 5).map((workout) => {
               const workoutSets = sets.filter(
                 (s) => s.workout_id === workout.id
@@ -181,30 +183,29 @@ export default function DashboardPage() {
                   href={`/workouts/${workout.id}`}
                   data-testid={`link-workout-${workout.id}`}
                 >
-                  <Card className="p-4 hover-elevate cursor-pointer transition-all">
-                    <div className="flex items-center justify-between gap-4">
-                      <div className="flex items-center gap-4 min-w-0">
-                        <div className="flex items-center justify-center w-10 h-10 rounded-lg bg-primary/10 shrink-0">
-                          <Dumbbell className="h-5 w-5 text-primary" />
+                  <Card className="p-3.5 md:p-4 hover-elevate cursor-pointer transition-all">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="flex items-center justify-center w-9 h-9 md:w-10 md:h-10 rounded-lg bg-primary/10 shrink-0">
+                          <Dumbbell className="h-4 w-4 md:h-5 md:w-5 text-primary" />
                         </div>
                         <div className="min-w-0">
-                          <p className="font-medium truncate">
+                          <p className="text-sm font-medium truncate">
                             {workout.title}
                           </p>
-                          <div className="flex items-center gap-3 text-sm text-muted-foreground mt-0.5 flex-wrap">
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5 flex-wrap">
                             <span className="flex items-center gap-1">
-                              <CalendarDays className="h-3.5 w-3.5" />
-                              {format(new Date(workout.performed_at), "MMM d, yyyy")}
+                              <CalendarDays className="h-3 w-3" />
+                              {format(new Date(workout.performed_at), "M월 d일", { locale: ko })}
                             </span>
                             {workout.duration_minutes && (
                               <span className="flex items-center gap-1">
-                                <Clock className="h-3.5 w-3.5" />
-                                {workout.duration_minutes}min
+                                <Clock className="h-3 w-3" />
+                                {workout.duration_minutes}분
                               </span>
                             )}
                             <span>
-                              {uniqueExercises.size} exercises &middot;{" "}
-                              {workoutSets.length} sets
+                              {uniqueExercises.size}종목 · {workoutSets.length}세트
                             </span>
                           </div>
                         </div>

@@ -10,11 +10,8 @@ import {
   Dumbbell,
   ListChecks,
   LogOut,
-  Menu,
-  X,
   Loader2,
 } from "lucide-react";
-import { useState } from "react";
 
 const navItems = [
   { href: "/dashboard", label: "대시보드", icon: LayoutDashboard },
@@ -25,112 +22,88 @@ const navItems = [
 export function Navbar() {
   const pathname = usePathname();
   const { user, loading, signOut } = useAuth();
-  const [mobileOpen, setMobileOpen] = useState(false);
 
   if (!user && !loading) return null;
 
   return (
-    <nav className="sticky top-0 z-50 border-b bg-background/80 backdrop-blur-md">
-      <div className="mx-auto max-w-6xl px-4">
-        <div className="flex h-14 items-center justify-between gap-4">
-          <Link
-            href="/dashboard"
-            className="flex items-center gap-2 font-bold text-lg tracking-tight"
-            data-testid="link-logo"
-          >
-            <PlumBlossom className="h-5 w-5 text-pink-500" />
-            <span>화산귀환</span>
-          </Link>
+    <>
+      <nav className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur-md" data-testid="navbar-top">
+        <div className="mx-auto max-w-6xl px-4">
+          <div className="flex h-14 items-center justify-between gap-4">
+            <Link
+              href="/dashboard"
+              className="flex items-center gap-2 font-bold text-lg tracking-tight"
+              data-testid="link-logo"
+            >
+              <PlumBlossom className="h-5 w-5 text-pink-500" />
+              <span className="hidden sm:inline">화산귀환</span>
+            </Link>
 
-          <div className="hidden md:flex items-center gap-1">
-            {navItems.map((item) => {
-              const active = pathname.startsWith(item.href);
-              return (
-                <Link key={item.href} href={item.href}>
+            <div className="hidden md:flex items-center gap-1">
+              {navItems.map((item) => {
+                const active = pathname.startsWith(item.href);
+                return (
+                  <Link key={item.href} href={item.href}>
+                    <Button
+                      variant={active ? "secondary" : "ghost"}
+                      size="sm"
+                      data-testid={`link-nav-${item.href.slice(1)}`}
+                    >
+                      <item.icon className="h-4 w-4" />
+                      {item.label}
+                    </Button>
+                  </Link>
+                );
+              })}
+            </div>
+
+            <div className="flex items-center gap-2">
+              {loading ? (
+                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+              ) : user ? (
+                <>
+                  <span className="text-sm text-muted-foreground truncate max-w-[120px] sm:max-w-[180px] hidden sm:inline" data-testid="text-user-email">
+                    {user.displayName || user.email}
+                  </span>
                   <Button
-                    variant={active ? "secondary" : "ghost"}
+                    variant="ghost"
                     size="sm"
-                    data-testid={`link-nav-${item.href.slice(1)}`}
+                    onClick={signOut}
+                    className="h-8 w-8 p-0 sm:h-9 sm:w-auto sm:px-3"
+                    data-testid="button-logout"
                   >
-                    <item.icon className="h-4 w-4" />
-                    {item.label}
+                    <LogOut className="h-4 w-4" />
+                    <span className="hidden sm:inline ml-1">로그아웃</span>
                   </Button>
-                </Link>
-              );
-            })}
+                </>
+              ) : null}
+            </div>
           </div>
-
-          <div className="hidden md:flex items-center gap-3">
-            {loading ? (
-              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-            ) : user ? (
-              <>
-                <span className="text-sm text-muted-foreground truncate max-w-[180px]" data-testid="text-user-email">
-                  {user.email}
-                </span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={signOut}
-                  data-testid="button-logout"
-                >
-                  <LogOut className="h-4 w-4" />
-                </Button>
-              </>
-            ) : null}
-          </div>
-
-          <Button
-            variant="ghost"
-            size="icon"
-            className="md:hidden"
-            onClick={() => setMobileOpen(!mobileOpen)}
-            data-testid="button-mobile-menu"
-          >
-            {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-          </Button>
         </div>
-      </div>
+      </nav>
 
-      {mobileOpen && (
-        <div className="md:hidden border-t bg-background px-4 py-3 space-y-2">
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 border-t bg-background/95 backdrop-blur-md safe-area-bottom" data-testid="navbar-bottom">
+        <div className="flex items-center justify-around h-14 max-w-md mx-auto">
           {navItems.map((item) => {
             const active = pathname.startsWith(item.href);
             return (
               <Link
                 key={item.href}
                 href={item.href}
-                onClick={() => setMobileOpen(false)}
+                className={`flex flex-col items-center gap-0.5 px-4 py-1.5 rounded-lg transition-colors ${
+                  active
+                    ? "text-primary"
+                    : "text-muted-foreground"
+                }`}
+                data-testid={`link-bottom-${item.href.slice(1)}`}
               >
-                <Button
-                  variant={active ? "secondary" : "ghost"}
-                  className="w-full justify-start"
-                  data-testid={`link-mobile-${item.href.slice(1)}`}
-                >
-                  <item.icon className="h-4 w-4" />
-                  {item.label}
-                </Button>
+                <item.icon className={`h-5 w-5 ${active ? "text-primary" : ""}`} />
+                <span className="text-[10px] font-medium">{item.label}</span>
               </Link>
             );
           })}
-          {user && (
-            <div className="pt-2 border-t">
-              <p className="text-sm text-muted-foreground px-4 py-1 truncate" data-testid="text-mobile-email">
-                {user.email}
-              </p>
-              <Button
-                variant="ghost"
-                className="w-full justify-start text-destructive"
-                onClick={signOut}
-                data-testid="button-mobile-logout"
-              >
-                <LogOut className="h-4 w-4" />
-                로그아웃
-              </Button>
-            </div>
-          )}
         </div>
-      )}
-    </nav>
+      </div>
+    </>
   );
 }

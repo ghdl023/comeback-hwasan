@@ -13,6 +13,7 @@ export interface Exercise {
   name: string;
   category: string;
   muscle_group: string | null;
+  parent_id: string | null;
   created_at: string;
 }
 
@@ -40,6 +41,41 @@ export interface WorkoutWithSets extends Workout {
   workout_sets: (WorkoutSet & { exercise?: Exercise })[];
 }
 
+export const MUSCLE_GROUPS = [
+  "neck",
+  "traps",
+  "shoulders",
+  "chest",
+  "back",
+  "triceps",
+  "biceps",
+  "forearms",
+  "abs",
+  "lower_back",
+  "glutes",
+  "legs",
+  "calves",
+] as const;
+
+export type MuscleGroup = (typeof MUSCLE_GROUPS)[number];
+
+export const MUSCLE_GROUP_LABELS: Record<MuscleGroup, string> = {
+  neck: "목",
+  traps: "승모근",
+  shoulders: "어깨",
+  chest: "가슴",
+  back: "등",
+  triceps: "삼두",
+  biceps: "이두",
+  forearms: "전완",
+  abs: "복부",
+  lower_back: "허리",
+  glutes: "엉덩이",
+  legs: "하체",
+  calves: "종아리",
+};
+
+
 export const EXERCISE_CATEGORIES = [
   "barbell",
   "dumbbell",
@@ -50,20 +86,4 @@ export const EXERCISE_CATEGORIES = [
   "other",
 ] as const;
 
-export const MUSCLE_GROUPS = [
-  "chest",
-  "back",
-  "shoulders",
-  "biceps",
-  "triceps",
-  "legs",
-  "glutes",
-  "abs",
-  "forearms",
-  "calves",
-  "full_body",
-  "cardio",
-] as const;
-
 export type ExerciseCategory = (typeof EXERCISE_CATEGORIES)[number];
-export type MuscleGroup = (typeof MUSCLE_GROUPS)[number];
