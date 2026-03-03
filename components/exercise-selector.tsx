@@ -12,8 +12,6 @@ import type { Exercise, MuscleGroup } from "@/lib/types";
 import { MUSCLE_GROUPS, MUSCLE_GROUP_LABELS } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   ArrowLeft,
   Search,
@@ -257,45 +255,48 @@ export function ExerciseSelector({
       </div>
 
       <div className="border-t bg-background shrink-0 safe-area-bottom">
-        <div className="px-3 py-2.5">
-          {selected.length > 0 ? (
-            <>
-              <div className="flex items-center justify-between mb-2">
-                <p className="text-xs font-medium text-muted-foreground">
-                  선택된 운동 ({selected.length})
-                </p>
-                <Button
-                  size="sm"
-                  className="h-8 text-xs"
-                  onClick={handleConfirm}
-                  data-testid="button-confirm-selection"
-                >
-                  추가하기
-                </Button>
-              </div>
-              <ScrollArea className="w-full">
-                <div className="flex gap-1.5 pb-1 scrollbar-hide">
-                  {selected.map((ex) => (
-                    <Badge
-                      key={ex.id}
-                      variant="secondary"
-                      className="shrink-0 gap-1 pr-1 cursor-pointer"
-                      onClick={() => handleRemoveSelected(ex.id)}
-                      data-testid={`badge-selected-${ex.id}`}
-                    >
+        {selected.length > 0 ? (
+          <div className="px-3 pt-2.5 pb-2">
+            <div className="overflow-x-auto scrollbar-hide">
+              <div className="flex gap-2 pb-2">
+                {selected.map((ex) => (
+                  <button
+                    key={ex.id}
+                    className="shrink-0 w-16 h-16 rounded-lg border border-border/60 bg-card shadow-sm flex flex-col items-center justify-center gap-0.5 p-1 relative group"
+                    onClick={() => handleRemoveSelected(ex.id)}
+                    data-testid={`card-selected-${ex.id}`}
+                  >
+                    <div className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 group-active:opacity-100 transition-opacity">
+                      <X className="h-2.5 w-2.5" />
+                    </div>
+                    <p className="text-[9px] text-muted-foreground leading-tight text-center line-clamp-1">
+                      {ex.muscle_group
+                        ? MUSCLE_GROUP_LABELS[ex.muscle_group as MuscleGroup] || ex.muscle_group
+                        : "-"}
+                    </p>
+                    <p className="text-[10px] font-medium leading-tight text-center line-clamp-2">
                       {ex.name}
-                      <X className="h-3 w-3" />
-                    </Badge>
-                  ))}
-                </div>
-              </ScrollArea>
-            </>
-          ) : (
-            <div className="flex items-center justify-center py-1">
-              <p className="text-xs text-muted-foreground">운동을 선택해주세요</p>
+                    </p>
+                  </button>
+                ))}
+              </div>
             </div>
-          )}
-        </div>
+            <div className="flex justify-end">
+              <Button
+                size="sm"
+                className="h-9 px-5 text-sm"
+                onClick={handleConfirm}
+                data-testid="button-confirm-selection"
+              >
+                완료
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <div className="px-3 py-3 flex items-center justify-center">
+            <p className="text-xs text-muted-foreground">운동을 선택해주세요</p>
+          </div>
+        )}
       </div>
     </div>
   );
