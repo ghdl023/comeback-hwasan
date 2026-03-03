@@ -1,10 +1,10 @@
 "use client";
 
 import { useAuth } from "@/components/auth-provider";
-import { createClient } from "@/lib/supabase/client";
+import { getExercises, addExercise, addWorkout, addWorkoutSets } from "@/lib/firebase/firestore";
 import type { Exercise } from "@/lib/types";
 import { EXERCISE_CATEGORIES, MUSCLE_GROUPS } from "@/lib/types";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -38,7 +38,6 @@ interface SetEntry {
 export default function NewWorkoutPage() {
   const { user } = useAuth();
   const router = useRouter();
-  const supabase = useMemo(() => createClient(), []);
 
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [loading, setLoading] = useState(true);
@@ -62,15 +61,12 @@ export default function NewWorkoutPage() {
   useEffect(() => {
     if (!user) return;
     const fetchExercises = async () => {
-      const { data } = await supabase
-        .from("exercises")
-        .select("*")
-        .order("name");
-      if (data) setExercises(data);
+      const data = await getExercises(user.uid);
+      setExercises(data);
       setLoading(false);
     };
     fetchExercises();
-  }, [user, supabase]);
+  }, [user]);
 
   const addSet = () => {
     if (exercises.length === 0) {
@@ -106,27 +102,24 @@ export default function NewWorkoutPage() {
     );
   };
 
-  const addExercise = async () => {
-    if (!newExName.trim()) return;
+  const handleAddExercise = async () => {
+    if (!newExName.trim() || !user) return;
     setAddingExercise(true);
-    const { data, error: err } = await supabase
-      .from("exercises")
-      .insert({
-        user_id: user!.id,
+    try {
+      const data = await addExercise({
+        user_id: user.uid,
         name: newExName.trim(),
         category: newExCategory,
         muscle_group: newExMuscle || null,
-      })
-      .select()
-      .single();
-    if (data) {
+      });
       setExercises((prev) => [...prev, data].sort((a, b) => a.name.localeCompare(b.name)));
       setNewExName("");
       setNewExCategory("barbell");
       setNewExMuscle("");
       setShowExerciseForm(false);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to add exercise");
     }
-    if (err) setError(err.message);
     setAddingExercise(false);
   };
 
@@ -145,47 +138,34 @@ export default function NewWorkoutPage() {
         return;
       }
     }
+    if (!user) return;
 
     setSaving(true);
     setError("");
 
-    const { data: workout, error: workoutErr } = await supabase
-      .from("workouts")
-      .insert({
-        user_id: user!.id,
+    try {
+      const workout = await addWorkout({
+        user_id: user.uid,
         title: title.trim(),
         performed_at: performedAt,
         duration_minutes: durationMinutes ? parseInt(durationMinutes) : null,
         notes: notes.trim() || null,
-      })
-      .select()
-      .single();
+      });
 
-    if (workoutErr || !workout) {
-      setError(workoutErr?.message || "Failed to create workout.");
+      const setsToInsert = sets.map((s) => ({
+        workout_id: workout.id,
+        exercise_id: s.exercise_id,
+        set_number: s.set_number,
+        reps: s.reps ? parseInt(s.reps) : null,
+        weight: s.weight ? parseFloat(s.weight) : null,
+      }));
+
+      await addWorkoutSets(setsToInsert);
+      router.push(`/workouts/${workout.id}`);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to save workout");
       setSaving(false);
-      return;
     }
-
-    const setsToInsert = sets.map((s) => ({
-      workout_id: workout.id,
-      exercise_id: s.exercise_id,
-      set_number: s.set_number,
-      reps: s.reps ? parseInt(s.reps) : null,
-      weight: s.weight ? parseFloat(s.weight) : null,
-    }));
-
-    const { error: setsErr } = await supabase
-      .from("workout_sets")
-      .insert(setsToInsert);
-
-    if (setsErr) {
-      setError(setsErr.message);
-      setSaving(false);
-      return;
-    }
-
-    router.push(`/workouts/${workout.id}`);
   };
 
   if (loading) {
@@ -328,7 +308,7 @@ export default function NewWorkoutPage() {
             <div className="flex gap-2">
               <Button
                 size="sm"
-                onClick={addExercise}
+                onClick={handleAddExercise}
                 disabled={addingExercise || !newExName.trim()}
                 data-testid="button-save-exercise"
               >

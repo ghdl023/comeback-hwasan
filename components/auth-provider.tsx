@@ -1,8 +1,14 @@
 "use client";
 
-import { createContext, useContext, useEffect, useState, useCallback, useMemo, type ReactNode } from "react";
-import { createClient } from "@/lib/supabase/client";
-import type { User } from "@supabase/supabase-js";
+import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from "react";
+import { auth } from "@/lib/firebase/config";
+import {
+  onAuthStateChanged,
+  signInWithPopup,
+  GoogleAuthProvider,
+  signOut as firebaseSignOut,
+  type User,
+} from "firebase/auth";
 
 interface AuthContextType {
   user: User | null;
@@ -18,55 +24,32 @@ const AuthContext = createContext<AuthContextType>({
   signOut: async () => {},
 });
 
+const googleProvider = new GoogleAuthProvider();
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
-  const supabase = useMemo(() => createClient(), []);
 
   useEffect(() => {
-    const initAuth = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        setUser(session.user);
-      }
-
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
-      setUser(currentUser);
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      setUser(firebaseUser);
       setLoading(false);
-    };
-
-    initAuth();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (event, session) => {
-        setUser(session?.user ?? null);
-        setLoading(false);
-
-        if (event === "TOKEN_REFRESHED") {
-          console.log("Session token refreshed");
-        }
-        if (event === "SIGNED_OUT") {
-          setUser(null);
-        }
-      }
-    );
-
-    return () => subscription.unsubscribe();
-  }, [supabase]);
+    });
+    return () => unsubscribe();
+  }, []);
 
   const signInWithGoogle = useCallback(async () => {
-    await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-      },
-    });
-  }, [supabase]);
+    try {
+      await signInWithPopup(auth, googleProvider);
+    } catch (error: unknown) {
+      console.error("Google sign-in failed:", error);
+    }
+  }, []);
 
   const signOut = useCallback(async () => {
-    await supabase.auth.signOut();
+    await firebaseSignOut(auth);
     window.location.href = "/login";
-  }, [supabase]);
+  }, []);
 
   return (
     <AuthContext.Provider value={{ user, loading, signInWithGoogle, signOut }}>

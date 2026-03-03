@@ -1,9 +1,9 @@
 "use client";
 
 import { useAuth } from "@/components/auth-provider";
-import { createClient } from "@/lib/supabase/client";
+import { getWorkouts, getWorkoutSetsByUser, deleteWorkout } from "@/lib/firebase/firestore";
 import type { Workout, WorkoutSet } from "@/lib/types";
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -24,21 +24,17 @@ export default function WorkoutsPage() {
   const [sets, setSets] = useState<WorkoutSet[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState<string | null>(null);
-  const supabase = useMemo(() => createClient(), []);
 
   const fetchData = useCallback(async () => {
     if (!user) return;
-    const [workoutsRes, setsRes] = await Promise.all([
-      supabase
-        .from("workouts")
-        .select("*")
-        .order("performed_at", { ascending: false }),
-      supabase.from("workout_sets").select("*"),
+    const [w, s] = await Promise.all([
+      getWorkouts(user.uid),
+      getWorkoutSetsByUser(user.uid),
     ]);
-    if (workoutsRes.data) setWorkouts(workoutsRes.data);
-    if (setsRes.data) setSets(setsRes.data);
+    setWorkouts(w);
+    setSets(s);
     setLoading(false);
-  }, [user, supabase]);
+  }, [user]);
 
   useEffect(() => {
     fetchData();
@@ -49,7 +45,7 @@ export default function WorkoutsPage() {
     e.stopPropagation();
     if (!confirm("Delete this workout? This cannot be undone.")) return;
     setDeleting(id);
-    await supabase.from("workouts").delete().eq("id", id);
+    await deleteWorkout(id);
     setWorkouts((prev) => prev.filter((w) => w.id !== id));
     setSets((prev) => prev.filter((s) => s.workout_id !== id));
     setDeleting(null);

@@ -1,9 +1,9 @@
 "use client";
 
 import { useAuth } from "@/components/auth-provider";
-import { createClient } from "@/lib/supabase/client";
+import { getWorkout, getWorkoutSets, getExercises, deleteWorkout } from "@/lib/firebase/firestore";
 import type { Workout, WorkoutSet, Exercise } from "@/lib/types";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -23,7 +23,6 @@ export default function WorkoutDetailPage() {
   const { user } = useAuth();
   const params = useParams();
   const router = useRouter();
-  const supabase = useMemo(() => createClient(), []);
   const id = params.id as string;
 
   const [workout, setWorkout] = useState<Workout | null>(null);
@@ -36,29 +35,24 @@ export default function WorkoutDetailPage() {
     if (!user || !id) return;
 
     const fetchData = async () => {
-      const [workoutRes, setsRes, exercisesRes] = await Promise.all([
-        supabase.from("workouts").select("*").eq("id", id).single(),
-        supabase
-          .from("workout_sets")
-          .select("*")
-          .eq("workout_id", id)
-          .order("set_number"),
-        supabase.from("exercises").select("*"),
+      const [w, s, e] = await Promise.all([
+        getWorkout(id),
+        getWorkoutSets(id),
+        getExercises(user.uid),
       ]);
-
-      if (workoutRes.data) setWorkout(workoutRes.data);
-      if (setsRes.data) setSets(setsRes.data);
-      if (exercisesRes.data) setExercises(exercisesRes.data);
+      setWorkout(w);
+      setSets(s);
+      setExercises(e);
       setLoading(false);
     };
 
     fetchData();
-  }, [user, id, supabase]);
+  }, [user, id]);
 
   const handleDelete = async () => {
     if (!confirm("Delete this workout? This cannot be undone.")) return;
     setDeleting(true);
-    await supabase.from("workouts").delete().eq("id", id);
+    await deleteWorkout(id);
     router.push("/workouts");
   };
 

@@ -1,9 +1,9 @@
 "use client";
 
 import { useAuth } from "@/components/auth-provider";
-import { createClient } from "@/lib/supabase/client";
+import { getWorkouts, getWorkoutSetsByUser, getExercises } from "@/lib/firebase/firestore";
 import type { Workout, WorkoutSet, Exercise } from "@/lib/types";
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -24,30 +24,24 @@ export default function DashboardPage() {
   const [sets, setSets] = useState<WorkoutSet[]>([]);
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [loading, setLoading] = useState(true);
-  const supabase = useMemo(() => createClient(), []);
 
   useEffect(() => {
     if (!user) return;
 
     const fetchData = async () => {
-      const [workoutsRes, setsRes, exercisesRes] = await Promise.all([
-        supabase
-          .from("workouts")
-          .select("*")
-          .order("performed_at", { ascending: false })
-          .limit(10),
-        supabase.from("workout_sets").select("*"),
-        supabase.from("exercises").select("*"),
+      const [w, s, e] = await Promise.all([
+        getWorkouts(user.uid, 10),
+        getWorkoutSetsByUser(user.uid),
+        getExercises(user.uid),
       ]);
-
-      if (workoutsRes.data) setWorkouts(workoutsRes.data);
-      if (setsRes.data) setSets(setsRes.data);
-      if (exercisesRes.data) setExercises(exercisesRes.data);
+      setWorkouts(w);
+      setSets(s);
+      setExercises(e);
       setLoading(false);
     };
 
     fetchData();
-  }, [user, supabase]);
+  }, [user]);
 
   if (loading) {
     return (
@@ -111,7 +105,7 @@ export default function DashboardPage() {
             Dashboard
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
-            Welcome back{user?.user_metadata?.full_name ? `, ${user.user_metadata.full_name}` : ""}!
+            Welcome back{user?.displayName ? `, ${user.displayName}` : ""}!
           </p>
         </div>
         <Link href="/workouts/new">

@@ -1,10 +1,15 @@
 "use client";
 
 import { useAuth } from "@/components/auth-provider";
-import { createClient } from "@/lib/supabase/client";
+import {
+  getExercises,
+  addExercise,
+  updateExercise,
+  deleteExercise,
+} from "@/lib/firebase/firestore";
 import type { Exercise } from "@/lib/types";
 import { EXERCISE_CATEGORIES, MUSCLE_GROUPS } from "@/lib/types";
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,7 +35,6 @@ import {
 
 export default function ExercisesPage() {
   const { user } = useAuth();
-  const supabase = useMemo(() => createClient(), []);
 
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [loading, setLoading] = useState(true);
@@ -52,37 +56,29 @@ export default function ExercisesPage() {
 
   const fetchExercises = useCallback(async () => {
     if (!user) return;
-    const { data } = await supabase
-      .from("exercises")
-      .select("*")
-      .order("name");
-    if (data) setExercises(data);
+    const data = await getExercises(user.uid);
+    setExercises(data);
     setLoading(false);
-  }, [user, supabase]);
+  }, [user]);
 
   useEffect(() => {
     fetchExercises();
   }, [fetchExercises]);
 
   const handleAdd = async () => {
-    if (!name.trim()) {
+    if (!name.trim() || !user) {
       setError("Exercise name is required.");
       return;
     }
     setSaving(true);
     setError("");
-    const { data, error: err } = await supabase
-      .from("exercises")
-      .insert({
-        user_id: user!.id,
+    try {
+      const data = await addExercise({
+        user_id: user.uid,
         name: name.trim(),
         category,
         muscle_group: muscleGroup || null,
-      })
-      .select()
-      .single();
-
-    if (data) {
+      });
       setExercises((prev) =>
         [...prev, data].sort((a, b) => a.name.localeCompare(b.name))
       );
@@ -90,14 +86,15 @@ export default function ExercisesPage() {
       setCategory("barbell");
       setMuscleGroup("");
       setShowForm(false);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to add exercise");
     }
-    if (err) setError(err.message);
     setSaving(false);
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm("Delete this exercise? Related sets will also be removed.")) return;
-    await supabase.from("exercises").delete().eq("id", id);
+    await deleteExercise(id);
     setExercises((prev) => prev.filter((e) => e.id !== id));
   };
 
@@ -118,26 +115,21 @@ export default function ExercisesPage() {
   const saveEdit = async () => {
     if (!editName.trim() || !editingId) return;
     setUpdating(true);
-    const { data, error: err } = await supabase
-      .from("exercises")
-      .update({
+    try {
+      const data = await updateExercise(editingId, {
         name: editName.trim(),
         category: editCategory,
         muscle_group: editMuscle || null,
-      })
-      .eq("id", editingId)
-      .select()
-      .single();
-
-    if (data) {
+      });
       setExercises((prev) =>
         prev
           .map((e) => (e.id === editingId ? data : e))
           .sort((a, b) => a.name.localeCompare(b.name))
       );
       cancelEdit();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : "Failed to update");
     }
-    if (err) setError(err.message);
     setUpdating(false);
   };
 
