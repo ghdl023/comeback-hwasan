@@ -1,8 +1,9 @@
-# FitLog - Personal Workout Tracker
+# 화산귀환 (comback-hwasan) - 운동 기록 트래커
 
 ## Overview
 Next.js 15 (App Router) + TypeScript web app for personal fitness/weight workout tracking.
 Uses Firebase (Firestore + Firebase Auth) as the backend. No custom server — frontend-only deployment.
+App name: comback-hwasan (화산귀환). Plum blossom (매화) logo theme.
 
 ## Tech Stack
 - **Framework**: Next.js 15 (App Router)

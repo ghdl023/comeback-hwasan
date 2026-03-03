@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/components/auth-provider";
 import { Button } from "@/components/ui/button";
+import { PlumBlossom } from "@/components/plum-blossom";
 import {
   LayoutDashboard,
   Dumbbell,
@@ -16,9 +17,9 @@ import {
 import { useState } from "react";
 
 const navItems = [
-  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/workouts", label: "Workouts", icon: Dumbbell },
-  { href: "/exercises", label: "Exercises", icon: ListChecks },
+  { href: "/dashboard", label: "대시보드", icon: LayoutDashboard },
+  { href: "/workouts", label: "운동기록", icon: Dumbbell },
+  { href: "/exercises", label: "운동목록", icon: ListChecks },
 ];
 
 export function Navbar() {
@@ -37,8 +38,8 @@ export function Navbar() {
             className="flex items-center gap-2 font-bold text-lg tracking-tight"
             data-testid="link-logo"
           >
-            <Dumbbell className="h-5 w-5 text-primary" />
-            <span>FitLog</span>
+            <PlumBlossom className="h-5 w-5 text-pink-500" />
+            <span>화산귀환</span>
           </Link>
 
           <div className="hidden md:flex items-center gap-1">
@@ -49,7 +50,7 @@ export function Navbar() {
                   <Button
                     variant={active ? "secondary" : "ghost"}
                     size="sm"
-                    data-testid={`link-nav-${item.label.toLowerCase()}`}
+                    data-testid={`link-nav-${item.href.slice(1)}`}
                   >
                     <item.icon className="h-4 w-4" />
                     {item.label}
@@ -104,7 +105,7 @@ export function Navbar() {
                 <Button
                   variant={active ? "secondary" : "ghost"}
                   className="w-full justify-start"
-                  data-testid={`link-mobile-${item.label.toLowerCase()}`}
+                  data-testid={`link-mobile-${item.href.slice(1)}`}
                 >
                   <item.icon className="h-4 w-4" />
                   {item.label}
@@ -124,7 +125,7 @@ export function Navbar() {
                 data-testid="button-mobile-logout"
               >
                 <LogOut className="h-4 w-4" />
-                Logout
+                로그아웃
               </Button>
             </div>
           )}
