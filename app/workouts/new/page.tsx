@@ -209,7 +209,7 @@ export default function NewWorkoutPage() {
           </Button>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
+        <div className="flex-1 overflow-y-auto scrollbar-hide px-4 py-4 space-y-4">
           {error && (
             <div className="p-3 rounded-lg bg-destructive/10 text-destructive text-sm" data-testid="text-error">
               {error}
@@ -406,6 +406,10 @@ export default function NewWorkoutPage() {
         open={selectorOpen}
         onClose={() => setSelectorOpen(false)}
         onSelect={handleExercisesSelected}
+        onAddExercise={() => {
+          setSelectorOpen(false);
+          window.location.href = "/exercises";
+        }}
         initialSelected={exerciseGroups.map((g) => g.exercise)}
       />
     </>
