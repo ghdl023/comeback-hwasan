@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { AuthProvider } from "@/components/auth-provider";
-import { ThemeProvider } from "@/components/theme-provider";
+import { ClientProviders } from "@/components/client-providers";
 
 export const metadata: Metadata = {
   title: "FitLog - Personal Workout Tracker",
@@ -28,10 +27,8 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body className="min-h-screen">
-        <ThemeProvider>
-          <AuthProvider>{children}</AuthProvider>
-        </ThemeProvider>
+      <body className="min-h-screen" suppressHydrationWarning>
+        <ClientProviders>{children}</ClientProviders>
       </body>
     </html>
   );
