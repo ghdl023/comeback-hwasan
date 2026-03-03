@@ -12,9 +12,22 @@ import {
   limit as firestoreLimit,
   Timestamp,
   writeBatch,
+  type DocumentData,
 } from "firebase/firestore";
 import { db } from "./config";
 import type { Exercise, Workout, WorkoutSet } from "@/lib/types";
+
+function serializeDoc<T>(id: string, data: DocumentData): T {
+  const serialized: Record<string, unknown> = { id };
+  for (const [key, value] of Object.entries(data)) {
+    if (value instanceof Timestamp) {
+      serialized[key] = value.toDate().toISOString();
+    } else {
+      serialized[key] = value;
+    }
+  }
+  return serialized as T;
+}
 
 export async function getExercises(userId: string): Promise<Exercise[]> {
   const q = query(
@@ -23,18 +36,18 @@ export async function getExercises(userId: string): Promise<Exercise[]> {
     orderBy("name")
   );
   const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Exercise);
+  return snap.docs.map((d) => serializeDoc<Exercise>(d.id, d.data()));
 }
 
 export async function addExercise(
   data: Omit<Exercise, "id" | "created_at">
 ): Promise<Exercise> {
+  const now = new Date().toISOString();
   const docRef = await addDoc(collection(db, "exercises"), {
     ...data,
-    created_at: Timestamp.now(),
+    created_at: now,
   });
-  const snap = await getDoc(docRef);
-  return { id: snap.id, ...snap.data() } as Exercise;
+  return { id: docRef.id, ...data, created_at: now } as Exercise;
 }
 
 export async function updateExercise(
@@ -44,7 +57,7 @@ export async function updateExercise(
   const ref = doc(db, "exercises", id);
   await updateDoc(ref, data);
   const snap = await getDoc(ref);
-  return { id: snap.id, ...snap.data() } as Exercise;
+  return serializeDoc<Exercise>(snap.id, snap.data()!);
 }
 
 export async function deleteExercise(id: string): Promise<void> {
@@ -64,24 +77,26 @@ export async function getWorkouts(
     q = query(q, firestoreLimit(limitCount));
   }
   const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Workout);
+  return snap.docs.map((d) => serializeDoc<Workout>(d.id, d.data()));
 }
 
-export async function getWorkout(id: string): Promise<Workout | null> {
+export async function getWorkout(id: string, userId: string): Promise<Workout | null> {
   const snap = await getDoc(doc(db, "workouts", id));
   if (!snap.exists()) return null;
-  return { id: snap.id, ...snap.data() } as Workout;
+  const data = snap.data();
+  if (data.user_id !== userId) return null;
+  return serializeDoc<Workout>(snap.id, data);
 }
 
 export async function addWorkout(
   data: Omit<Workout, "id" | "created_at">
 ): Promise<Workout> {
+  const now = new Date().toISOString();
   const docRef = await addDoc(collection(db, "workouts"), {
     ...data,
-    created_at: Timestamp.now(),
+    created_at: now,
   });
-  const snap = await getDoc(docRef);
-  return { id: snap.id, ...snap.data() } as Workout;
+  return { id: docRef.id, ...data, created_at: now } as Workout;
 }
 
 export async function deleteWorkout(id: string): Promise<void> {
@@ -96,19 +111,14 @@ export async function deleteWorkout(id: string): Promise<void> {
   await batch.commit();
 }
 
-export async function getWorkoutSets(workoutId?: string): Promise<WorkoutSet[]> {
-  let q;
-  if (workoutId) {
-    q = query(
-      collection(db, "workout_sets"),
-      where("workout_id", "==", workoutId),
-      orderBy("set_number")
-    );
-  } else {
-    q = query(collection(db, "workout_sets"));
-  }
+export async function getWorkoutSets(workoutId: string): Promise<WorkoutSet[]> {
+  const q = query(
+    collection(db, "workout_sets"),
+    where("workout_id", "==", workoutId),
+    orderBy("set_number")
+  );
   const snap = await getDocs(q);
-  return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as WorkoutSet);
+  return snap.docs.map((d) => serializeDoc<WorkoutSet>(d.id, d.data()));
 }
 
 export async function getWorkoutSetsByUser(userId: string): Promise<WorkoutSet[]> {
@@ -126,7 +136,7 @@ export async function getWorkoutSetsByUser(userId: string): Promise<WorkoutSet[]
     );
     const snap = await getDocs(q);
     snap.docs.forEach((d) =>
-      allSets.push({ id: d.id, ...d.data() } as WorkoutSet)
+      allSets.push(serializeDoc<WorkoutSet>(d.id, d.data()))
     );
   }
   return allSets;
@@ -135,10 +145,11 @@ export async function getWorkoutSetsByUser(userId: string): Promise<WorkoutSet[]
 export async function addWorkoutSets(
   sets: Omit<WorkoutSet, "id" | "created_at">[]
 ): Promise<void> {
+  const now = new Date().toISOString();
   const batch = writeBatch(db);
   for (const s of sets) {
     const ref = doc(collection(db, "workout_sets"));
-    batch.set(ref, { ...s, created_at: Timestamp.now() });
+    batch.set(ref, { ...s, created_at: now });
   }
   await batch.commit();
 }

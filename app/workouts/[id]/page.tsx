@@ -36,7 +36,7 @@ export default function WorkoutDetailPage() {
 
     const fetchData = async () => {
       const [w, s, e] = await Promise.all([
-        getWorkout(id),
+        getWorkout(id, user.uid),
         getWorkoutSets(id),
         getExercises(user.uid),
       ]);
