@@ -4,6 +4,7 @@ import {
   addDoc,
   getDoc,
   getDocs,
+  setDoc,
   updateDoc,
   deleteDoc,
   query,
@@ -15,7 +16,7 @@ import {
   type DocumentData,
 } from "firebase/firestore";
 import { db } from "./config";
-import type { Exercise, Workout, WorkoutSet } from "@/lib/types";
+import type { AppUser, Exercise, Workout, WorkoutSet } from "@/lib/types";
 
 function serializeDoc<T>(id: string, data: DocumentData): T {
   const serialized: Record<string, unknown> = { id };
@@ -27,6 +28,40 @@ function serializeDoc<T>(id: string, data: DocumentData): T {
     }
   }
   return serialized as T;
+}
+
+export async function getUser(uid: string): Promise<AppUser | null> {
+  const snap = await getDoc(doc(db, "users", uid));
+  if (!snap.exists()) return null;
+  return serializeDoc<AppUser>(snap.id, snap.data());
+}
+
+export async function upsertUserOnLogin(userData: {
+  uid: string;
+  email: string | null;
+  displayName: string | null;
+  photoURL: string | null;
+}): Promise<AppUser> {
+  const ref = doc(db, "users", userData.uid);
+  const snap = await getDoc(ref);
+  const now = new Date().toISOString();
+
+  if (snap.exists()) {
+    await updateDoc(ref, { last_login_at: now });
+    const updated = await getDoc(ref);
+    return serializeDoc<AppUser>(updated.id, updated.data()!);
+  }
+
+  const newUser = {
+    uid: userData.uid,
+    email: userData.email || "",
+    display_name: userData.displayName || null,
+    photo_url: userData.photoURL || null,
+    created_at: now,
+    last_login_at: now,
+  };
+  await setDoc(ref, newUser);
+  return { ...newUser } as AppUser;
 }
 
 export async function getExercises(userId: string): Promise<Exercise[]> {

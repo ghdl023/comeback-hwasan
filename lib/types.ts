@@ -1,3 +1,12 @@
+export interface AppUser {
+  uid: string;
+  email: string;
+  display_name: string | null;
+  photo_url: string | null;
+  created_at: string;
+  last_login_at: string;
+}
+
 export interface Exercise {
   id: string;
   user_id: string;
