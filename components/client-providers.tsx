@@ -11,17 +11,11 @@ export function ClientProviders({ children }: { children: ReactNode }) {
     setMounted(true);
   }, []);
 
+  if (!mounted) return null;
+
   return (
     <ThemeProvider>
-      <AuthProvider>
-        {mounted ? (
-          children
-        ) : (
-          <div className="flex items-center justify-center min-h-screen">
-            <div className="h-8 w-8 animate-spin rounded-full border-4 border-muted border-t-primary" />
-          </div>
-        )}
-      </AuthProvider>
+      <AuthProvider>{children}</AuthProvider>
     </ThemeProvider>
   );
 }
