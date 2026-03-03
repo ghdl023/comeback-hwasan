@@ -29,15 +29,20 @@ export default function DashboardPage() {
     if (!user) return;
 
     const fetchData = async () => {
-      const [w, s, e] = await Promise.all([
-        getWorkouts(user.uid, 10),
-        getWorkoutSetsByUser(user.uid),
-        getExercises(user.uid),
-      ]);
-      setWorkouts(w);
-      setSets(s);
-      setExercises(e);
-      setLoading(false);
+      try {
+        const [w, s, e] = await Promise.all([
+          getWorkouts(user.uid, 10).catch(() => [] as Workout[]),
+          getWorkoutSetsByUser(user.uid).catch(() => [] as WorkoutSet[]),
+          getExercises(user.uid).catch(() => [] as Exercise[]),
+        ]);
+        setWorkouts(w);
+        setSets(s);
+        setExercises(e);
+      } catch (err) {
+        console.error("Dashboard fetch error:", err);
+      } finally {
+        setLoading(false);
+      }
     };
 
     fetchData();

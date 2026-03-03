@@ -35,15 +35,20 @@ export default function WorkoutDetailPage() {
     if (!user || !id) return;
 
     const fetchData = async () => {
-      const [w, s, e] = await Promise.all([
-        getWorkout(id, user.uid),
-        getWorkoutSets(id),
-        getExercises(user.uid),
-      ]);
-      setWorkout(w);
-      setSets(s);
-      setExercises(e);
-      setLoading(false);
+      try {
+        const [w, s, e] = await Promise.all([
+          getWorkout(id, user.uid),
+          getWorkoutSets(id).catch(() => [] as WorkoutSet[]),
+          getExercises(user.uid).catch(() => [] as Exercise[]),
+        ]);
+        setWorkout(w);
+        setSets(s);
+        setExercises(e);
+      } catch (err) {
+        console.error("Workout detail fetch error:", err);
+      } finally {
+        setLoading(false);
+      }
     };
 
     fetchData();

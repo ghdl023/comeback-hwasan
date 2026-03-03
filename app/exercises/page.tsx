@@ -56,9 +56,14 @@ export default function ExercisesPage() {
 
   const fetchExercises = useCallback(async () => {
     if (!user) return;
-    const data = await getExercises(user.uid);
-    setExercises(data);
-    setLoading(false);
+    try {
+      const data = await getExercises(user.uid);
+      setExercises(data);
+    } catch (err) {
+      console.error("Exercises fetch error:", err);
+    } finally {
+      setLoading(false);
+    }
   }, [user]);
 
   useEffect(() => {

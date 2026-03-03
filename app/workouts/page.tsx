@@ -27,13 +27,18 @@ export default function WorkoutsPage() {
 
   const fetchData = useCallback(async () => {
     if (!user) return;
-    const [w, s] = await Promise.all([
-      getWorkouts(user.uid),
-      getWorkoutSetsByUser(user.uid),
-    ]);
-    setWorkouts(w);
-    setSets(s);
-    setLoading(false);
+    try {
+      const [w, s] = await Promise.all([
+        getWorkouts(user.uid).catch(() => [] as Workout[]),
+        getWorkoutSetsByUser(user.uid).catch(() => [] as WorkoutSet[]),
+      ]);
+      setWorkouts(w);
+      setSets(s);
+    } catch (err) {
+      console.error("Workouts fetch error:", err);
+    } finally {
+      setLoading(false);
+    }
   }, [user]);
 
   useEffect(() => {
