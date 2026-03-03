@@ -4,7 +4,8 @@ import { ClientProviders } from "@/components/client-providers";
 
 export const metadata: Metadata = {
   title: "FitLog - Personal Workout Tracker",
-  description: "Track your gym workouts, exercises, and progress with FitLog.",
+  description:
+    "Track your gym workouts, exercises, and progress with FitLog.",
 };
 
 export default function RootLayout({

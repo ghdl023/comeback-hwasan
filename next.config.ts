@@ -5,6 +5,8 @@ const nextConfig: NextConfig = {
     "*.replit.dev",
     "*.replit.app",
     "*.janeway.replit.dev",
+    "*.kirk.replit.dev",
+    "*.picard.replit.dev",
   ],
   typescript: {
     ignoreBuildErrors: false,
