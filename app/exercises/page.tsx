@@ -12,6 +12,7 @@ import { EXERCISE_CATEGORIES, MUSCLE_GROUPS, MUSCLE_GROUP_LABELS } from "@/lib/t
 import { useEffect, useState, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { AppShell } from "@/components/app-shell";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -157,16 +158,14 @@ export default function ExercisesPage() {
   }
 
   return (
-    <div className="mx-auto max-w-lg md:max-w-4xl px-4 py-5 md:py-8 space-y-4 md:space-y-6 pb-20 md:pb-8">
+    <AppShell
+      headerCenter={<span className="text-sm font-semibold">운동목록</span>}
+    >
+    <div className="mx-auto max-w-lg md:max-w-4xl px-4 py-4 md:py-8 space-y-4 md:space-y-6 pb-8 overflow-y-auto flex-1">
       <div className="flex items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl md:text-2xl font-bold" data-testid="text-exercises-title">
-            운동목록
-          </h1>
-          <p className="text-muted-foreground text-xs md:text-sm mt-0.5">
-            총 {exercises.length}개 운동
-          </p>
-        </div>
+        <p className="text-muted-foreground text-xs md:text-sm" data-testid="text-exercises-title">
+          총 {exercises.length}개 운동
+        </p>
         <Button
           size="sm"
           className="h-9 gap-1.5"
@@ -404,5 +403,6 @@ export default function ExercisesPage() {
         </div>
       )}
     </div>
+    </AppShell>
   );
 }

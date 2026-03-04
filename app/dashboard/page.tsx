@@ -6,9 +6,9 @@ import type { Workout, WorkoutSet } from "@/lib/types";
 import { useEffect, useState, useMemo, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { AppShell } from "@/components/app-shell";
 import {
   Loader2,
-  Menu,
   Settings,
   ChevronLeft,
   ChevronRight,
@@ -248,12 +248,8 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="flex flex-col h-[calc(100dvh-3.5rem-3.5rem)] md:h-[calc(100dvh-3.5rem)]" data-testid="dashboard-calendar">
-      <div className="flex items-center justify-between px-4 py-2.5 border-b bg-background shrink-0 relative">
-        <Button variant="ghost" size="icon" className="h-8 w-8" data-testid="button-side-nav">
-          <Menu className="h-5 w-5" />
-        </Button>
-
+    <AppShell
+      headerCenter={
         <div ref={monthPickerRef} className="relative">
           <button
             className="flex items-center gap-1.5 text-sm font-semibold px-2 py-1 rounded-md hover:bg-muted/50 transition-colors"
@@ -290,11 +286,14 @@ export default function DashboardPage() {
             </div>
           )}
         </div>
-
+      }
+      headerRight={
         <Button variant="ghost" size="icon" className="h-8 w-8" data-testid="button-settings">
           <Settings className="h-5 w-5" />
         </Button>
-      </div>
+      }
+    >
+    <div className="flex flex-col flex-1 overflow-hidden" data-testid="dashboard-calendar">
 
       <div className="flex-1 overflow-y-auto scrollbar-hide">
         <div className="grid grid-cols-[2.5rem_repeat(7,1fr)] text-center sticky top-0 bg-background z-10 border-b">
@@ -445,5 +444,6 @@ export default function DashboardPage() {
         </div>
       )}
     </div>
+    </AppShell>
   );
 }

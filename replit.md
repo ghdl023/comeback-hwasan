@@ -28,7 +28,9 @@ components/             - React components
   auth-provider.tsx     - Firebase Auth context provider (Google popup)
   auth-guard.tsx        - Client-side route protection
   client-providers.tsx  - Client-side providers wrapper (hydration fix)
-  navbar.tsx            - Top nav + mobile bottom tab navigation
+  app-shell.tsx         - Shared layout wrapper with hamburger header and side panel
+  side-panel.tsx        - Slide-out side navigation panel (user info, menu, logout)
+  navbar.tsx            - (deprecated, kept for reference)
   exercise-selector.tsx - Full-screen exercise selection (muscle group → exercise → sub-exercise)
   plum-blossom.tsx      - Plum blossom SVG logo
   theme-provider.tsx    - Dark mode provider

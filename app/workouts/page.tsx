@@ -6,6 +6,7 @@ import type { Workout, WorkoutSet } from "@/lib/types";
 import { useEffect, useState, useCallback } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { AppShell } from "@/components/app-shell";
 import Link from "next/link";
 import {
   Dumbbell,
@@ -66,16 +67,14 @@ export default function WorkoutsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-lg md:max-w-4xl px-4 py-5 md:py-8 space-y-4 md:space-y-6 pb-20 md:pb-8">
+    <AppShell
+      headerCenter={<span className="text-sm font-semibold">운동기록</span>}
+    >
+    <div className="mx-auto max-w-lg md:max-w-4xl px-4 py-4 md:py-8 space-y-4 md:space-y-6 pb-8 overflow-y-auto flex-1">
       <div className="flex items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl md:text-2xl font-bold" data-testid="text-workouts-title">
-            운동기록
-          </h1>
-          <p className="text-muted-foreground text-xs md:text-sm mt-0.5">
-            총 {workouts.length}회 운동
-          </p>
-        </div>
+        <p className="text-muted-foreground text-xs md:text-sm" data-testid="text-workouts-title">
+          총 {workouts.length}회 운동
+        </p>
         <Link href="/workouts/new">
           <Button size="sm" className="h-9 gap-1.5" data-testid="button-new-workout">
             <Plus className="h-4 w-4" />
@@ -174,5 +173,6 @@ export default function WorkoutsPage() {
         </div>
       )}
     </div>
+    </AppShell>
   );
 }
