@@ -241,10 +241,10 @@ export default function DashboardPage() {
   const getRowFlex = (wIdx: number) => {
     if (selectedWeekIdx < 0) return 1;
     const totalRows = weeks.length;
-    const shrinkIdx = selectedWeekIdx < totalRows - 1 ? selectedWeekIdx + 1 : selectedWeekIdx - 1;
-    if (wIdx === selectedWeekIdx) return 1.25;
-    if (wIdx === shrinkIdx) return 0.75;
-    return 1;
+    const expandAmount = 0.25;
+    if (wIdx === selectedWeekIdx) return 1 + expandAmount;
+    const shrinkEach = expandAmount / (totalRows - 1);
+    return 1 - shrinkEach;
   };
 
   const dayLabels = ["일", "월", "화", "수", "목", "금", "토"];
