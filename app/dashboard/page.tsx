@@ -9,6 +9,8 @@ import {
   saveBodyRecord,
   getMemos,
   addMemo,
+  updateMemo,
+  deleteMemo,
 } from "@/lib/firebase/firestore";
 import type { Workout, WorkoutSet, Exercise, MuscleGroup, Memo } from "@/lib/types";
 import { MUSCLE_GROUP_LABELS } from "@/lib/types";
@@ -88,6 +90,7 @@ export default function DashboardPage() {
   const [memoContent, setMemoContent] = useState("");
   const [memoShowOnCalendar, setMemoShowOnCalendar] = useState(false);
   const [memoSaving, setMemoSaving] = useState(false);
+  const [editingMemo, setEditingMemo] = useState<Memo | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -172,6 +175,46 @@ export default function DashboardPage() {
       setMemoAddOpen(false);
     } catch (err) {
       console.error("Memo save error:", err);
+    } finally {
+      setMemoSaving(false);
+    }
+  };
+
+  const handleDeleteMemo = async (memoId: string) => {
+    try {
+      await deleteMemo(memoId);
+      setMemos((prev) => prev.filter((m) => m.id !== memoId));
+    } catch (err) {
+      console.error("Memo delete error:", err);
+    }
+  };
+
+  const handleOpenEditMemo = (memo: Memo) => {
+    setEditingMemo(memo);
+    setMemoContent(memo.content);
+    setMemoShowOnCalendar(memo.show_on_calendar);
+  };
+
+  const handleUpdateMemo = async () => {
+    if (!editingMemo || !memoContent.trim()) return;
+    setMemoSaving(true);
+    try {
+      await updateMemo(editingMemo.id, {
+        content: memoContent.trim(),
+        show_on_calendar: memoShowOnCalendar,
+      });
+      setMemos((prev) =>
+        prev.map((m) =>
+          m.id === editingMemo.id
+            ? { ...m, content: memoContent.trim(), show_on_calendar: memoShowOnCalendar }
+            : m
+        )
+      );
+      setEditingMemo(null);
+      setMemoContent("");
+      setMemoShowOnCalendar(false);
+    } catch (err) {
+      console.error("Memo update error:", err);
     } finally {
       setMemoSaving(false);
     }
@@ -374,7 +417,14 @@ export default function DashboardPage() {
     );
   }
 
-  if (memoAddOpen) {
+  if (memoAddOpen || editingMemo) {
+    const isEditing = !!editingMemo;
+    const handleClose = () => {
+      setMemoAddOpen(false);
+      setEditingMemo(null);
+      setMemoContent("");
+      setMemoShowOnCalendar(false);
+    };
     return (
       <div className="flex flex-col h-[100dvh] bg-background">
         <div className="flex items-center gap-3 px-4 py-2.5 border-b shrink-0">
@@ -382,12 +432,12 @@ export default function DashboardPage() {
             variant="ghost"
             size="icon"
             className="h-8 w-8"
-            onClick={() => { setMemoAddOpen(false); setMemoContent(""); setMemoShowOnCalendar(false); }}
+            onClick={handleClose}
             data-testid="button-memo-back"
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <h1 className="text-base font-bold">메모 추가</h1>
+          <h1 className="text-base font-bold">{isEditing ? "메모 수정" : "메모 추가"}</h1>
         </div>
 
         <div className="flex-1 flex flex-col px-4 py-4 overflow-hidden">
@@ -418,10 +468,10 @@ export default function DashboardPage() {
             size="sm"
             className="h-9 px-5"
             disabled={!memoContent.trim() || memoSaving}
-            onClick={handleAddMemo}
+            onClick={isEditing ? handleUpdateMemo : handleAddMemo}
             data-testid="button-memo-submit"
           >
-            {memoSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : "추가"}
+            {memoSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : isEditing ? "수정" : "추가"}
           </Button>
         </div>
       </div>
@@ -633,8 +683,13 @@ export default function DashboardPage() {
         ) : (
           <div className="space-y-2">
             {memos.map((m) => (
-              <Card key={m.id} className="p-3" data-testid={`card-memo-${m.id}`}>
-                <p className="text-sm whitespace-pre-wrap">{m.content}</p>
+              <Card
+                key={m.id}
+                className="p-3 cursor-pointer active:bg-muted/30 transition-colors"
+                onClick={() => handleOpenEditMemo(m)}
+                data-testid={`card-memo-${m.id}`}
+              >
+                <p className="text-sm whitespace-pre-wrap line-clamp-2">{m.content}</p>
                 <div className="flex items-center gap-2 mt-2">
                   {m.show_on_calendar && (
                     <Badge variant="secondary" className="text-[9px] h-4 px-1.5">캘린더 표시</Badge>
@@ -642,6 +697,15 @@ export default function DashboardPage() {
                   <span className="text-[10px] text-muted-foreground ml-auto">
                     {new Date(m.created_at).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })}
                   </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 px-2 text-[10px] text-destructive hover:text-destructive"
+                    onClick={(e) => { e.stopPropagation(); handleDeleteMemo(m.id); }}
+                    data-testid={`button-delete-memo-${m.id}`}
+                  >
+                    삭제
+                  </Button>
                 </div>
               </Card>
             ))}

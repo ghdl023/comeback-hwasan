@@ -288,6 +288,18 @@ export async function addMemo(
   return { id: docRef.id, ...data, created_at: now };
 }
 
+export async function updateMemo(
+  id: string,
+  data: { content: string; show_on_calendar: boolean }
+): Promise<void> {
+  const ref = doc(db, "memos", id);
+  await updateDoc(ref, data);
+}
+
+export async function deleteMemo(id: string): Promise<void> {
+  await deleteDoc(doc(db, "memos", id));
+}
+
 export async function getMemosByUserMonth(
   userId: string,
   year: number,
