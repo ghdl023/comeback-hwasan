@@ -208,8 +208,8 @@ export default function DashboardPage() {
         getExercises(user.uid),
       ]);
       setWorkouts(w);
-      setAllSets(s);
-      setExercisesData(e);
+      setSets(s);
+      setExercises(e);
     } catch (err) {
       console.error("Workout create error:", err);
     }
