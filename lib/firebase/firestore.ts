@@ -68,11 +68,12 @@ export async function upsertUserOnLogin(userData: {
 export async function getExercises(userId: string): Promise<Exercise[]> {
   const q = query(
     collection(db, "exercises"),
-    where("user_id", "==", userId),
-    orderBy("name")
+    where("user_id", "in", [userId, "system"])
   );
   const snap = await getDocs(q);
-  return snap.docs.map((d) => serializeDoc<Exercise>(d.id, d.data()));
+  const results = snap.docs.map((d) => serializeDoc<Exercise>(d.id, d.data()));
+  results.sort((a, b) => a.name.localeCompare(b.name));
+  return results;
 }
 
 export async function getExercisesByMuscleGroup(
@@ -81,13 +82,14 @@ export async function getExercisesByMuscleGroup(
 ): Promise<Exercise[]> {
   const q = query(
     collection(db, "exercises"),
-    where("user_id", "==", userId),
+    where("user_id", "in", [userId, "system"]),
     where("muscle_group", "==", muscleGroup),
-    where("parent_id", "==", null),
-    orderBy("name")
+    where("parent_id", "==", null)
   );
   const snap = await getDocs(q);
-  return snap.docs.map((d) => serializeDoc<Exercise>(d.id, d.data()));
+  const results = snap.docs.map((d) => serializeDoc<Exercise>(d.id, d.data()));
+  results.sort((a, b) => a.name.localeCompare(b.name));
+  return results;
 }
 
 export async function getChildExercises(
@@ -96,12 +98,13 @@ export async function getChildExercises(
 ): Promise<Exercise[]> {
   const q = query(
     collection(db, "exercises"),
-    where("user_id", "==", userId),
-    where("parent_id", "==", parentId),
-    orderBy("name")
+    where("user_id", "in", [userId, "system"]),
+    where("parent_id", "==", parentId)
   );
   const snap = await getDocs(q);
-  return snap.docs.map((d) => serializeDoc<Exercise>(d.id, d.data()));
+  const results = snap.docs.map((d) => serializeDoc<Exercise>(d.id, d.data()));
+  results.sort((a, b) => a.name.localeCompare(b.name));
+  return results;
 }
 
 export async function getExerciseCountsByMuscleGroup(
@@ -109,7 +112,8 @@ export async function getExerciseCountsByMuscleGroup(
 ): Promise<Record<string, number>> {
   const q = query(
     collection(db, "exercises"),
-    where("user_id", "==", userId)
+    where("user_id", "in", [userId, "system"]),
+    where("parent_id", "==", null)
   );
   const snap = await getDocs(q);
   const counts: Record<string, number> = {};
