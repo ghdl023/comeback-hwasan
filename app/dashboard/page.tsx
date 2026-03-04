@@ -1,18 +1,35 @@
 "use client";
 
 import { useAuth } from "@/components/auth-provider";
-import { getWorkouts, getWorkoutSetsByUser } from "@/lib/firebase/firestore";
-import type { Workout, WorkoutSet } from "@/lib/types";
+import {
+  getWorkouts,
+  getWorkoutSetsByUser,
+  getExercises,
+  getBodyRecord,
+  saveBodyRecord,
+} from "@/lib/firebase/firestore";
+import type { Workout, WorkoutSet, Exercise, MuscleGroup } from "@/lib/types";
+import { MUSCLE_GROUP_LABELS } from "@/lib/types";
 import { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { AppShell } from "@/components/app-shell";
 import {
   Loader2,
   Settings,
   ChevronLeft,
   ChevronRight,
-  ArrowRight,
+  ChevronUp,
+  ChevronDown,
+  CalendarCheck,
+  Repeat,
+  Dumbbell,
+  Clock,
+  Weight,
+  Plus,
 } from "lucide-react";
 
 interface DayCell {
@@ -36,6 +53,7 @@ export default function DashboardPage() {
   const router = useRouter();
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [sets, setSets] = useState<WorkoutSet[]>([]);
+  const [exercises, setExercises] = useState<Exercise[]>([]);
   const [loading, setLoading] = useState(true);
   const today = useMemo(() => new Date(), []);
   const [selectedDate, setSelectedDate] = useState<Date>(today);
@@ -48,16 +66,26 @@ export default function DashboardPage() {
   const touchStartX = useRef<number | null>(null);
   const touchStartY = useRef<number | null>(null);
 
+  const [detailOpen, setDetailOpen] = useState(false);
+
+  const [bodyWeight, setBodyWeight] = useState("");
+  const [skeletalMuscle, setSkeletalMuscle] = useState("");
+  const [bodyFat, setBodyFat] = useState("");
+  const [bodySaving, setBodySaving] = useState(false);
+  const [bodyLoading, setBodyLoading] = useState(false);
+
   useEffect(() => {
     if (!user) return;
     const fetchData = async () => {
       try {
-        const [w, s] = await Promise.all([
+        const [w, s, e] = await Promise.all([
           getWorkouts(user.uid).catch(() => [] as Workout[]),
           getWorkoutSetsByUser(user.uid).catch(() => [] as WorkoutSet[]),
+          getExercises(user.uid).catch(() => [] as Exercise[]),
         ]);
         setWorkouts(w);
         setSets(s);
+        setExercises(e);
       } catch (err) {
         console.error("Dashboard fetch error:", err);
       } finally {
@@ -66,6 +94,63 @@ export default function DashboardPage() {
     };
     fetchData();
   }, [user]);
+
+  const selectedDateStr = useMemo(() => {
+    return `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, "0")}-${String(selectedDate.getDate()).padStart(2, "0")}`;
+  }, [selectedDate]);
+
+  useEffect(() => {
+    if (!user) return;
+    setBodyLoading(true);
+    setBodyWeight("");
+    setSkeletalMuscle("");
+    setBodyFat("");
+    getBodyRecord(user.uid, selectedDateStr)
+      .then((body) => {
+        if (body) {
+          setBodyWeight(body.weight?.toString() || "");
+          setSkeletalMuscle(body.skeletal_muscle?.toString() || "");
+          setBodyFat(body.body_fat?.toString() || "");
+        }
+      })
+      .catch(() => {})
+      .finally(() => setBodyLoading(false));
+  }, [user, selectedDateStr]);
+
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const bodyStateRef = useRef({ bodyWeight: "", skeletalMuscle: "", bodyFat: "" });
+
+  useEffect(() => {
+    bodyStateRef.current = { bodyWeight, skeletalMuscle, bodyFat };
+  }, [bodyWeight, skeletalMuscle, bodyFat]);
+
+  const debouncedSaveBody = useCallback(() => {
+    if (!user) return;
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(async () => {
+      const { bodyWeight: w, skeletalMuscle: sm, bodyFat: bf } = bodyStateRef.current;
+      setBodySaving(true);
+      try {
+        await saveBodyRecord({
+          user_id: user.uid,
+          date: selectedDateStr,
+          weight: w ? parseFloat(w) : null,
+          skeletal_muscle: sm ? parseFloat(sm) : null,
+          body_fat: bf ? parseFloat(bf) : null,
+        });
+      } catch (err) {
+        console.error("Body record save error:", err);
+      } finally {
+        setBodySaving(false);
+      }
+    }, 800);
+  }, [user, selectedDateStr]);
+
+  useEffect(() => {
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    };
+  }, []);
 
   useEffect(() => {
     if (!monthPickerOpen) return;
@@ -179,7 +264,7 @@ export default function DashboardPage() {
     return { duration, setCount };
   };
 
-  const isToday = (date: Date) =>
+  const isTodayDate = (date: Date) =>
     date.getFullYear() === today.getFullYear() &&
     date.getMonth() === today.getMonth() &&
     date.getDate() === today.getDate();
@@ -193,29 +278,28 @@ export default function DashboardPage() {
 
   const handleDateClick = (date: Date) => {
     if (isSameDay(date, selectedDate)) {
-      handleGoToWorkout();
+      setDetailOpen(true);
       return;
     }
     setSelectedDate(date);
+    setDetailOpen(false);
     if (date.getMonth() !== month || date.getFullYear() !== year) {
       setCurrentMonth(new Date(date.getFullYear(), date.getMonth(), 1));
     }
   };
 
-  const handleGoToWorkout = () => {
-    const dateStr = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, "0")}-${String(selectedDate.getDate()).padStart(2, "0")}`;
-    router.push(`/workouts/date/${dateStr}`);
+  const handleToggleDetail = () => {
+    setDetailOpen((prev) => !prev);
+  };
+
+  const handleGoToToday = () => {
+    const t = new Date();
+    setSelectedDate(t);
+    setCurrentMonth(new Date(t.getFullYear(), t.getMonth(), 1));
+    setDetailOpen(true);
   };
 
   const selectedDayInfo = getDayInfo(selectedDate);
-  const selectedDateWorkoutIndex = useMemo(() => {
-    const sorted = [...workouts].sort(
-      (a, b) => new Date(a.performed_at).getTime() - new Date(b.performed_at).getTime()
-    );
-    const dayWorkouts = sorted.filter((w) => isSameDay(new Date(w.performed_at), selectedDate));
-    if (dayWorkouts.length === 0) return 0;
-    return sorted.indexOf(dayWorkouts[0]) + 1;
-  }, [selectedDate, workouts]);
 
   const selectedWeekIdx = useMemo(() => {
     for (let w = 0; w < weeks.length; w++) {
@@ -246,6 +330,43 @@ export default function DashboardPage() {
     return `${mins}분`;
   };
 
+  const exerciseMap = useMemo(() => new Map(exercises.map((e) => [e.id, e])), [exercises]);
+
+  const dayWorkouts = useMemo(() => {
+    return workouts.filter((w) => {
+      const d = new Date(w.performed_at);
+      return isSameDay(d, selectedDate);
+    });
+  }, [workouts, selectedDate]);
+
+  const daySets = useMemo(() => {
+    const wIds = new Set(dayWorkouts.map((w) => w.id));
+    return sets.filter((s) => wIds.has(s.workout_id));
+  }, [dayWorkouts, sets]);
+
+  const groupedByExercise = useMemo(() => {
+    return daySets.reduce(
+      (acc, s) => {
+        if (!acc[s.exercise_id]) acc[s.exercise_id] = [];
+        acc[s.exercise_id].push(s);
+        return acc;
+      },
+      {} as Record<string, WorkoutSet[]>
+    );
+  }, [daySets]);
+
+  const totalSets = daySets.length;
+  const totalVolume = useMemo(() => {
+    return daySets.reduce((sum, s) => {
+      return sum + (s.weight ? Number(s.weight) : 0) * (s.reps ?? 0);
+    }, 0);
+  }, [daySets]);
+  const totalDuration = useMemo(() => {
+    return dayWorkouts.reduce((sum, w) => sum + (w.duration_minutes || 0), 0);
+  }, [dayWorkouts]);
+
+  const isTodaySelected = isTodayDate(selectedDate);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-32">
@@ -253,6 +374,282 @@ export default function DashboardPage() {
       </div>
     );
   }
+
+  const detailHeader = (
+    <div
+      className="flex items-center justify-between px-4 py-2 border-b bg-background cursor-pointer"
+      onClick={handleToggleDetail}
+      data-testid="button-toggle-detail"
+    >
+      <Button
+        variant="ghost"
+        size="icon"
+        className="h-7 w-7"
+        onClick={(e) => {
+          e.stopPropagation();
+          handleToggleDetail();
+        }}
+        data-testid="button-detail-toggle-icon"
+      >
+        {detailOpen ? (
+          <ChevronDown className="h-5 w-5" />
+        ) : (
+          <ChevronUp className="h-5 w-5" />
+        )}
+      </Button>
+
+      <div className="flex items-center gap-1.5">
+        <span className="text-sm font-semibold" data-testid="text-detail-date">
+          {selectedDateStr}
+        </span>
+        {isTodaySelected && (
+          <span className="text-[10px] text-primary font-semibold">오늘</span>
+        )}
+      </div>
+
+      <div className="flex items-center gap-0.5">
+        {!isTodaySelected && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleGoToToday();
+            }}
+            data-testid="button-go-today"
+            title="오늘"
+          >
+            <CalendarCheck className="h-4 w-4" />
+          </Button>
+        )}
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7"
+          data-testid="button-routine"
+          title="루틴 (준비 중)"
+          onClick={(e) => {
+            e.stopPropagation();
+            alert("루틴 기능은 준비 중입니다.");
+          }}
+        >
+          <Repeat className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  );
+
+  const detailContent = (
+    <div className="flex-1 overflow-y-auto scrollbar-hide">
+      <div className="px-4 py-4 space-y-4">
+        {totalSets === 0 ? (
+          <Card className="p-8 text-center space-y-3">
+            <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-muted mx-auto">
+              <Dumbbell className="h-7 w-7 text-muted-foreground" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold">운동을 추가해주세요</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                아래 버튼을 눌러 운동을 기록하세요
+              </p>
+            </div>
+            <Button
+              className="gap-2"
+              onClick={() => router.push(`/workouts/new?date=${selectedDateStr}`)}
+              data-testid="button-add-workout-empty"
+            >
+              <Plus className="h-4 w-4" />
+              운동 추가
+            </Button>
+          </Card>
+        ) : (
+          <>
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <h2 className="text-sm font-bold" data-testid="text-section-title">
+                  운동 기록
+                </h2>
+                {totalDuration > 0 && (
+                  <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                    <Clock className="h-3 w-3" />
+                    {totalDuration}분
+                  </span>
+                )}
+              </div>
+
+              <div className="flex items-center gap-3 text-xs text-muted-foreground mb-3">
+                <span className="flex items-center gap-1">
+                  <Dumbbell className="h-3 w-3" />
+                  {totalSets}세트
+                </span>
+                <span className="flex items-center gap-1">
+                  <Weight className="h-3 w-3" />
+                  {totalVolume > 0
+                    ? totalVolume >= 1000
+                      ? `${(totalVolume / 1000).toFixed(1)}t`
+                      : `${totalVolume.toLocaleString()}kg`
+                    : "0kg"}
+                </span>
+              </div>
+
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5 mb-3 h-7 text-xs"
+                onClick={() => router.push(`/workouts/new?date=${selectedDateStr}`)}
+                data-testid="button-add-more-workout"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                운동 추가
+              </Button>
+            </div>
+
+            <div className="space-y-3">
+              {Object.entries(groupedByExercise).map(([exerciseId, exSets]) => {
+                const exercise = exerciseMap.get(exerciseId);
+                const exVolume = exSets.reduce(
+                  (sum, s) =>
+                    sum + (s.weight ? Number(s.weight) : 0) * (s.reps ?? 0),
+                  0
+                );
+
+                return (
+                  <Card
+                    key={exerciseId}
+                    className="overflow-hidden"
+                    data-testid={`card-exercise-${exerciseId}`}
+                  >
+                    <div className="flex items-center gap-3 px-3.5 py-2 bg-muted/30 border-b">
+                      <div className="flex items-center justify-center w-6 h-6 rounded-md bg-primary/10 shrink-0">
+                        <Dumbbell className="h-3 w-3 text-primary" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">
+                          {exercise?.name || "알 수 없는 운동"}
+                        </p>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          {exercise?.muscle_group && (
+                            <Badge
+                              variant="outline"
+                              className="text-[9px] h-4 px-1.5"
+                            >
+                              {MUSCLE_GROUP_LABELS[
+                                exercise.muscle_group as MuscleGroup
+                              ] || exercise.muscle_group}
+                            </Badge>
+                          )}
+                          <span className="text-[10px] text-muted-foreground">
+                            {exSets.length}세트 ·{" "}
+                            {exVolume > 0
+                              ? `${exVolume.toLocaleString()}kg`
+                              : "-"}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="px-3.5 py-1.5">
+                      <div className="grid grid-cols-3 gap-0 text-[10px] font-medium text-muted-foreground uppercase tracking-wider pb-1">
+                        <span>세트</span>
+                        <span>횟수</span>
+                        <span>무게 (kg)</span>
+                      </div>
+                      {exSets.map((s) => (
+                        <div
+                          key={s.id}
+                          className="grid grid-cols-3 gap-0 text-sm py-1 border-t border-muted/40"
+                          data-testid={`row-set-${s.id}`}
+                        >
+                          <span className="font-mono text-xs text-muted-foreground">
+                            {s.set_number}
+                          </span>
+                          <span className="text-sm">{s.reps ?? "-"}</span>
+                          <span className="text-sm">
+                            {s.weight ? Number(s.weight) : "-"}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </Card>
+                );
+              })}
+            </div>
+          </>
+        )}
+
+        <div className="pt-2 pb-4">
+          <h2 className="text-sm font-bold mb-3" data-testid="text-body-section">
+            신체 정보
+          </h2>
+          <Card className="p-3">
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-1">
+                <label className="text-[10px] font-medium text-muted-foreground">
+                  체중 (kg)
+                </label>
+                <Input
+                  type="number"
+                  step="0.1"
+                  placeholder="-"
+                  value={bodyWeight}
+                  onChange={(e) => setBodyWeight(e.target.value)}
+                  onBlur={debouncedSaveBody}
+                  className="h-8 text-sm text-center"
+                  data-testid="input-body-weight"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-medium text-muted-foreground">
+                  골격근량 (kg)
+                </label>
+                <Input
+                  type="number"
+                  step="0.1"
+                  placeholder="-"
+                  value={skeletalMuscle}
+                  onChange={(e) => setSkeletalMuscle(e.target.value)}
+                  onBlur={debouncedSaveBody}
+                  className="h-8 text-sm text-center"
+                  data-testid="input-skeletal-muscle"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[10px] font-medium text-muted-foreground">
+                  체지방 (%)
+                </label>
+                <Input
+                  type="number"
+                  step="0.1"
+                  placeholder="-"
+                  value={bodyFat}
+                  onChange={(e) => setBodyFat(e.target.value)}
+                  onBlur={debouncedSaveBody}
+                  className="h-8 text-sm text-center"
+                  data-testid="input-body-fat"
+                />
+              </div>
+            </div>
+            {bodySaving && (
+              <p className="text-[10px] text-muted-foreground text-center mt-1.5">
+                저장 중...
+              </p>
+            )}
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+
+  const collapsedSummary = (
+    <div className="px-4 py-2">
+      <p className="text-xs text-muted-foreground" data-testid="text-workout-summary">
+        {selectedDayInfo
+          ? `${selectedDayInfo.workoutCount}회 운동 · ${selectedDayInfo.setCount}세트`
+          : "기록 없음"}
+      </p>
+    </div>
+  );
 
   return (
     <AppShell
@@ -303,9 +700,14 @@ export default function DashboardPage() {
     <div className="flex flex-col flex-1 overflow-hidden" data-testid="dashboard-calendar">
       <div
         ref={calendarRef}
-        className="flex-1 flex flex-col select-none"
+        className="flex flex-col select-none overflow-hidden"
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
+        style={{
+          flex: detailOpen ? "0 0 0px" : "1 1 auto",
+          opacity: detailOpen ? 0 : 1,
+          transition: "flex 0.2s ease, opacity 0.15s ease",
+        }}
       >
         <div className="grid grid-cols-[2.2rem_repeat(7,1fr)] text-center shrink-0 border-b">
           <div className="py-1.5" />
@@ -350,7 +752,7 @@ export default function DashboardPage() {
                 {week.days.map((cell, dIdx) => {
                   const { date, isCurrentMonth } = cell;
                   const info = getDayInfo(date);
-                  const todayDate = isToday(date);
+                  const todayDate = isTodayDate(date);
                   const sel = isSelected(date);
                   const isSunday = date.getDay() === 0;
                   const isSaturday = date.getDay() === 6;
@@ -406,35 +808,17 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div className="border-t bg-background shrink-0 safe-area-bottom">
-        <div className="px-4 py-3 flex items-center justify-between gap-3">
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <p className="text-sm font-semibold" data-testid="text-selected-date">
-                {selectedDate.getFullYear()}-{String(selectedDate.getMonth() + 1).padStart(2, "0")}-{String(selectedDate.getDate()).padStart(2, "0")}
-              </p>
-              {isToday(selectedDate) && (
-                <span className="text-xs text-primary font-medium">오늘</span>
-              )}
-            </div>
-            <p className="text-xs text-muted-foreground" data-testid="text-workout-index">
-              {selectedDayInfo
-                ? `${selectedDateWorkoutIndex}번째 기록 · ${selectedDayInfo.workoutCount}회 운동`
-                : "기록 없음"}
-            </p>
-          </div>
-
-          <Button
-            size="sm"
-            variant="secondary"
-            className="h-9 px-4 rounded-full text-xs font-medium shrink-0"
-            onClick={handleGoToWorkout}
-            data-testid="button-go-to-workout"
-          >
-            {selectedDayInfo ? "상세보기" : "운동기록"}
-            <ArrowRight className="h-3.5 w-3.5 ml-1" />
-          </Button>
-        </div>
+      <div
+        className="border-t bg-background flex flex-col safe-area-bottom"
+        style={{
+          flex: detailOpen ? "1 1 auto" : "0 0 auto",
+          transition: "flex 0.2s ease",
+          overflow: "hidden",
+        }}
+        data-testid="detail-panel"
+      >
+        {detailHeader}
+        {detailOpen ? detailContent : collapsedSummary}
       </div>
     </div>
     </AppShell>

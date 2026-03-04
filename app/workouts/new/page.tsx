@@ -176,7 +176,7 @@ export default function NewWorkoutPage() {
       }));
 
       await addWorkoutSets(setsToInsert);
-      router.push(`/workouts/date/${performedAt}`);
+      router.push("/dashboard");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "저장에 실패했습니다");
       setSaving(false);

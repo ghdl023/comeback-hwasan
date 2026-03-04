@@ -20,10 +20,10 @@ app/                    - Next.js pages (App Router)
   layout.tsx            - Root layout
   page.tsx              - Root redirect to /login
   login/page.tsx        - Login page (Google OAuth)
-  dashboard/            - Dashboard (vertical calendar with week rows, workout info per day, bottom footer on date select)
+  dashboard/            - Dashboard (vertical calendar + expandable detail panel at bottom)
   workouts/             - Workout CRUD (list/create/detail)
-    date/[date]/page.tsx - Date-based workout detail (primary detail view from dashboard)
-    new/page.tsx        - New workout with exercise selector
+    date/[date]/page.tsx - Date-based workout detail (standalone, kept for direct link)
+    new/page.tsx        - New workout with exercise selector (redirects back to dashboard)
   exercises/            - Exercise library management
 components/             - React components
   auth-provider.tsx     - Firebase Auth context provider (Google popup)
@@ -87,4 +87,6 @@ middleware.ts           - Next.js middleware (passthrough — auth is client-sid
 - All UI text is in Korean (한국어)
 - Navigation via `AppShell` (hamburger header) + `SidePanel` (slide-out drawer)
 - Safe area insets handled for iOS notch devices
-- Workout detail page: header (back, date, today button, routine placeholder), exercise list grouped by exercise, body info section (체중/골격근량/체지방) with debounced auto-save
+- Dashboard detail panel: expandable bottom panel (not separate route), toggles open/closed with fast animation (0.2s), calendar collapses when panel opens
+- Detail panel header: toggle icon (up/down), date, today button, routine placeholder — same elements in both states
+- Body info section (체중/골격근량/체지방) with debounced auto-save per selected date
