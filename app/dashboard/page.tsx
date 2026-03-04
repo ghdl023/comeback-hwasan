@@ -204,19 +204,7 @@ export default function DashboardPage() {
 
   const handleGoToWorkout = () => {
     const dateStr = `${selectedDate.getFullYear()}-${String(selectedDate.getMonth() + 1).padStart(2, "0")}-${String(selectedDate.getDate()).padStart(2, "0")}`;
-
-    const dayWorkouts = workouts.filter((w) => {
-      const d = new Date(w.performed_at);
-      return isSameDay(d, selectedDate);
-    });
-
-    if (dayWorkouts.length === 1) {
-      router.push(`/workouts/${dayWorkouts[0].id}`);
-    } else if (dayWorkouts.length > 1) {
-      router.push(`/workouts?date=${dateStr}`);
-    } else {
-      router.push(`/workouts/new?date=${dateStr}`);
-    }
+    router.push(`/workouts/date/${dateStr}`);
   };
 
   const selectedDayInfo = getDayInfo(selectedDate);

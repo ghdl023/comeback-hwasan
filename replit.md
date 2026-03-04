@@ -22,6 +22,7 @@ app/                    - Next.js pages (App Router)
   login/page.tsx        - Login page (Google OAuth)
   dashboard/            - Dashboard (vertical calendar with week rows, workout info per day, bottom footer on date select)
   workouts/             - Workout CRUD (list/create/detail)
+    date/[date]/page.tsx - Date-based workout detail (primary detail view from dashboard)
     new/page.tsx        - New workout with exercise selector
   exercises/            - Exercise library management
 components/             - React components
