@@ -5,7 +5,7 @@ import { addWorkout, addWorkoutSets } from "@/lib/firebase/firestore";
 import type { Exercise } from "@/lib/types";
 import { MUSCLE_GROUP_LABELS, type MuscleGroup } from "@/lib/types";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -42,6 +42,8 @@ interface ExerciseGroup {
 export default function NewWorkoutPage() {
   const { user } = useAuth();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const dateParam = searchParams.get("date");
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -49,7 +51,7 @@ export default function NewWorkoutPage() {
 
   const [title, setTitle] = useState("");
   const [performedAt, setPerformedAt] = useState(
-    new Date().toISOString().split("T")[0]
+    dateParam || new Date().toISOString().split("T")[0]
   );
   const [durationMinutes, setDurationMinutes] = useState("");
   const [notes, setNotes] = useState("");

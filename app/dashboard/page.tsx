@@ -1,45 +1,34 @@
 "use client";
 
 import { useAuth } from "@/components/auth-provider";
-import { getWorkouts, getWorkoutSetsByUser, getExercises } from "@/lib/firebase/firestore";
-import type { Workout, WorkoutSet, Exercise } from "@/lib/types";
-import { useEffect, useState } from "react";
-import { Card } from "@/components/ui/card";
+import { getWorkouts } from "@/lib/firebase/firestore";
+import type { Workout } from "@/lib/types";
+import { useEffect, useState, useMemo, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import Link from "next/link";
 import {
-  Dumbbell,
-  CalendarDays,
-  TrendingUp,
-  Plus,
   Loader2,
-  Clock,
+  ChevronLeft,
   ChevronRight,
-  Flame,
 } from "lucide-react";
-import { format, startOfWeek, endOfWeek, isWithinInterval } from "date-fns";
-import { ko } from "date-fns/locale";
 
 export default function DashboardPage() {
   const { user } = useAuth();
+  const router = useRouter();
   const [workouts, setWorkouts] = useState<Workout[]>([]);
-  const [sets, setSets] = useState<WorkoutSet[]>([]);
-  const [exercises, setExercises] = useState<Exercise[]>([]);
   const [loading, setLoading] = useState(true);
+  const [currentMonth, setCurrentMonth] = useState(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1);
+  });
 
   useEffect(() => {
     if (!user) return;
 
     const fetchData = async () => {
       try {
-        const [w, s, e] = await Promise.all([
-          getWorkouts(user.uid, 10).catch(() => [] as Workout[]),
-          getWorkoutSetsByUser(user.uid).catch(() => [] as WorkoutSet[]),
-          getExercises(user.uid).catch(() => [] as Exercise[]),
-        ]);
+        const w = await getWorkouts(user.uid).catch(() => [] as Workout[]);
         setWorkouts(w);
-        setSets(s);
-        setExercises(e);
       } catch (err) {
         console.error("Dashboard fetch error:", err);
       } finally {
@@ -50,6 +39,105 @@ export default function DashboardPage() {
     fetchData();
   }, [user]);
 
+  const workoutDateSet = useMemo(() => {
+    const dateSet = new Set<string>();
+    workouts.forEach((w) => {
+      const d = new Date(w.performed_at);
+      dateSet.add(`${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`);
+    });
+    return dateSet;
+  }, [workouts]);
+
+  const workoutDurationByDate = useMemo(() => {
+    const map = new Map<string, number>();
+    workouts.forEach((w) => {
+      const d = new Date(w.performed_at);
+      const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+      map.set(key, (map.get(key) || 0) + (w.duration_minutes || 0));
+    });
+    return map;
+  }, [workouts]);
+
+  const hasWorkout = useCallback(
+    (date: Date) => {
+      return workoutDateSet.has(
+        `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`
+      );
+    },
+    [workoutDateSet]
+  );
+
+  const goToPrevMonth = () => {
+    setCurrentMonth(
+      (prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1)
+    );
+  };
+
+  const goToNextMonth = () => {
+    setCurrentMonth(
+      (prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1)
+    );
+  };
+
+  const handleDateClick = (date: Date) => {
+    const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+
+    const dayWorkouts = workouts.filter((w) => {
+      const d = new Date(w.performed_at);
+      return (
+        d.getFullYear() === date.getFullYear() &&
+        d.getMonth() === date.getMonth() &&
+        d.getDate() === date.getDate()
+      );
+    });
+
+    if (dayWorkouts.length === 1) {
+      router.push(`/workouts/${dayWorkouts[0].id}`);
+    } else if (dayWorkouts.length > 1) {
+      router.push(`/workouts?date=${dateStr}`);
+    } else {
+      router.push(`/workouts/new?date=${dateStr}`);
+    }
+  };
+
+  const year = currentMonth.getFullYear();
+  const month = currentMonth.getMonth();
+  const firstDayOfMonth = new Date(year, month, 1);
+  const lastDayOfMonth = new Date(year, month + 1, 0);
+  const startDayOfWeek = firstDayOfMonth.getDay();
+  const daysInMonth = lastDayOfMonth.getDate();
+
+  const calendarDays: (Date | null)[] = [];
+  for (let i = 0; i < startDayOfWeek; i++) {
+    calendarDays.push(null);
+  }
+  for (let d = 1; d <= daysInMonth; d++) {
+    calendarDays.push(new Date(year, month, d));
+  }
+
+  const today = new Date();
+  const isToday = (date: Date) =>
+    date.getFullYear() === today.getFullYear() &&
+    date.getMonth() === today.getMonth() &&
+    date.getDate() === today.getDate();
+
+  const todayKey = `${today.getFullYear()}-${today.getMonth()}-${today.getDate()}`;
+  const todayDuration = workoutDurationByDate.get(todayKey) || 0;
+
+  const currentMonthWorkouts = workouts.filter((w) => {
+    const d = new Date(w.performed_at);
+    return d.getFullYear() === year && d.getMonth() === month;
+  });
+  const avgDuration =
+    currentMonthWorkouts.length > 0
+      ? currentMonthWorkouts.reduce(
+          (sum, w) => sum + (w.duration_minutes || 0),
+          0
+        ) / currentMonthWorkouts.length
+      : 0;
+
+  const dayLabels = ["일", "월", "화", "수", "목", "금", "토"];
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-32">
@@ -58,166 +146,107 @@ export default function DashboardPage() {
     );
   }
 
-  const now = new Date();
-  const weekStart = startOfWeek(now, { weekStartsOn: 1 });
-  const weekEnd = endOfWeek(now, { weekStartsOn: 1 });
-  const thisWeekWorkouts = workouts.filter((w) => {
-    const d = new Date(w.performed_at);
-    return isWithinInterval(d, { start: weekStart, end: weekEnd });
-  });
-
-  const totalSets = sets.length;
-  const totalVolume = sets.reduce((sum, s) => {
-    const w = s.weight ? Number(s.weight) : 0;
-    const r = s.reps ?? 0;
-    return sum + w * r;
-  }, 0);
-
-  const stats = [
-    {
-      label: "총 운동",
-      value: workouts.length,
-      icon: Dumbbell,
-      color: "text-primary",
-      bg: "bg-primary/10",
-    },
-    {
-      label: "이번 주",
-      value: thisWeekWorkouts.length,
-      icon: Flame,
-      color: "text-orange-500",
-      bg: "bg-orange-500/10",
-    },
-    {
-      label: "총 세트",
-      value: totalSets,
-      icon: TrendingUp,
-      color: "text-emerald-500",
-      bg: "bg-emerald-500/10",
-    },
-    {
-      label: "총 볼륨",
-      value: `${(totalVolume / 1000).toFixed(1)}t`,
-      icon: TrendingUp,
-      color: "text-purple-500",
-      bg: "bg-purple-500/10",
-    },
-  ];
-
   return (
-    <div className="mx-auto max-w-lg md:max-w-6xl px-4 py-5 md:py-8 space-y-5 md:space-y-8 pb-20 md:pb-8">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h1 className="text-xl md:text-2xl font-bold" data-testid="text-dashboard-title">
-            대시보드
-          </h1>
-          <p className="text-muted-foreground text-sm mt-0.5">
-            {user?.displayName ? `${user.displayName}님, 안녕하세요!` : "환영합니다!"}
-          </p>
-        </div>
-        <Link href="/workouts/new">
-          <Button size="sm" className="h-9 gap-1.5" data-testid="button-new-workout">
-            <Plus className="h-4 w-4" />
-            <span className="hidden sm:inline">새 운동</span>
-          </Button>
-        </Link>
+    <div className="mx-auto max-w-lg md:max-w-xl px-4 py-5 pb-20 md:pb-8" data-testid="dashboard-calendar">
+      <div className="flex items-center justify-center gap-4 mb-5">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
+          onClick={goToPrevMonth}
+          data-testid="button-prev-month"
+        >
+          <ChevronLeft className="h-5 w-5" />
+        </Button>
+        <h1 className="text-lg font-bold" data-testid="text-current-month">
+          {year}년 {month + 1}월
+        </h1>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
+          onClick={goToNextMonth}
+          data-testid="button-next-month"
+        >
+          <ChevronRight className="h-5 w-5" />
+        </Button>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4 md:gap-4">
-        {stats.map((stat) => (
-          <Card key={stat.label} className="p-3.5 md:p-5 space-y-2">
-            <div className="flex items-center gap-2">
-              <div className={`flex items-center justify-center w-8 h-8 md:w-9 md:h-9 rounded-lg ${stat.bg}`}>
-                <stat.icon className={`h-4 w-4 ${stat.color}`} />
-              </div>
-              <span className="text-xs md:text-sm text-muted-foreground">{stat.label}</span>
-            </div>
-            <p className="text-xl md:text-2xl font-bold" data-testid={`text-stat-${stat.label}`}>
-              {stat.value}
-            </p>
-          </Card>
+      <div className="flex items-start justify-between px-1 mb-5">
+        <div>
+          <p className="text-xs text-muted-foreground">오늘 (분)</p>
+          <p className="text-3xl font-bold mt-0.5" data-testid="text-today-duration">
+            {todayDuration || 0}
+          </p>
+        </div>
+        <div className="text-right">
+          <p className="text-xs text-muted-foreground">평균 (분)</p>
+          <p className="text-3xl font-bold text-primary mt-0.5" data-testid="text-avg-duration">
+            {avgDuration > 0 ? avgDuration.toFixed(1) : "0"}
+          </p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-7 mb-2">
+        {dayLabels.map((label, i) => (
+          <div
+            key={label}
+            className={`text-center text-xs font-medium py-2 ${
+              i === 0 ? "text-red-400" : i === 6 ? "text-blue-400" : "text-muted-foreground"
+            }`}
+          >
+            {label}
+          </div>
         ))}
       </div>
 
-      <div className="space-y-3">
-        <div className="flex items-center justify-between gap-2">
-          <h2 className="text-base md:text-lg font-semibold">최근 운동</h2>
-          <Link href="/workouts">
-            <Button variant="ghost" size="sm" className="h-8 text-xs" data-testid="link-all-workouts">
-              전체보기
-              <ChevronRight className="h-3.5 w-3.5" />
-            </Button>
-          </Link>
-        </div>
+      <div className="grid grid-cols-7">
+        {calendarDays.map((date, idx) => {
+          if (!date) {
+            return <div key={`empty-${idx}`} className="aspect-square" />;
+          }
 
-        {workouts.length === 0 ? (
-          <Card className="p-10 md:p-12 text-center space-y-4">
-            <div className="inline-flex items-center justify-center w-14 h-14 md:w-16 md:h-16 rounded-2xl bg-muted mx-auto">
-              <Dumbbell className="h-7 w-7 md:h-8 md:w-8 text-muted-foreground" />
-            </div>
-            <div>
-              <p className="font-medium text-sm">아직 운동 기록이 없습니다</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                첫 운동을 기록해보세요!
-              </p>
-            </div>
-            <Link href="/workouts/new">
-              <Button size="sm" data-testid="button-first-workout">
-                <Plus className="h-4 w-4" />
-                첫 운동 기록하기
-              </Button>
-            </Link>
-          </Card>
-        ) : (
-          <div className="space-y-2">
-            {workouts.slice(0, 5).map((workout) => {
-              const workoutSets = sets.filter(
-                (s) => s.workout_id === workout.id
-              );
-              const uniqueExercises = new Set(
-                workoutSets.map((s) => s.exercise_id)
-              );
-              return (
-                <Link
-                  key={workout.id}
-                  href={`/workouts/${workout.id}`}
-                  data-testid={`link-workout-${workout.id}`}
+          const worked = hasWorkout(date);
+          const todayDate = isToday(date);
+          const dayOfWeek = date.getDay();
+          const isSunday = dayOfWeek === 0;
+          const isSaturday = dayOfWeek === 6;
+
+          return (
+            <button
+              key={date.getDate()}
+              className="aspect-square flex items-center justify-center relative"
+              onClick={() => handleDateClick(date)}
+              data-testid={`button-date-${date.getDate()}`}
+            >
+              {worked ? (
+                <div
+                  className={`w-10 h-10 md:w-11 md:h-11 rounded-full flex items-center justify-center text-sm font-semibold transition-all ${
+                    todayDate
+                      ? "bg-primary text-primary-foreground shadow-md shadow-primary/30"
+                      : "bg-primary/85 text-primary-foreground"
+                  }`}
                 >
-                  <Card className="p-3.5 md:p-4 hover-elevate cursor-pointer transition-all">
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="flex items-center justify-center w-9 h-9 md:w-10 md:h-10 rounded-lg bg-primary/10 shrink-0">
-                          <Dumbbell className="h-4 w-4 md:h-5 md:w-5 text-primary" />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-sm font-medium truncate">
-                            {workout.title}
-                          </p>
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5 flex-wrap">
-                            <span className="flex items-center gap-1">
-                              <CalendarDays className="h-3 w-3" />
-                              {format(new Date(workout.performed_at), "M월 d일", { locale: ko })}
-                            </span>
-                            {workout.duration_minutes && (
-                              <span className="flex items-center gap-1">
-                                <Clock className="h-3 w-3" />
-                                {workout.duration_minutes}분
-                              </span>
-                            )}
-                            <span>
-                              {uniqueExercises.size}종목 · {workoutSets.length}세트
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                      <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
-                    </div>
-                  </Card>
-                </Link>
-              );
-            })}
-          </div>
-        )}
+                  {date.getDate()}
+                </div>
+              ) : (
+                <div
+                  className={`w-10 h-10 md:w-11 md:h-11 rounded-full flex items-center justify-center text-sm transition-all ${
+                    todayDate
+                      ? "ring-2 ring-primary/40 font-bold text-primary"
+                      : isSunday
+                        ? "text-red-400"
+                        : isSaturday
+                          ? "text-blue-400"
+                          : "text-foreground"
+                  }`}
+                >
+                  {date.getDate()}
+                </div>
+              )}
+            </button>
+          );
+        })}
       </div>
     </div>
   );
