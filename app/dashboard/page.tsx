@@ -193,6 +193,9 @@ export default function DashboardPage() {
 
   const handleDateClick = (date: Date) => {
     setSelectedDate(date);
+    if (date.getMonth() !== month || date.getFullYear() !== year) {
+      setCurrentMonth(new Date(date.getFullYear(), date.getMonth(), 1));
+    }
   };
 
   const handleGoToWorkout = () => {
