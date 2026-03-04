@@ -20,7 +20,7 @@ app/                    - Next.js pages (App Router)
   layout.tsx            - Root layout
   page.tsx              - Root redirect to /login
   login/page.tsx        - Login page (Google OAuth)
-  dashboard/            - Dashboard (stats, recent workouts)
+  dashboard/            - Dashboard (vertical calendar with week rows, workout info per day, bottom footer on date select)
   workouts/             - Workout CRUD (list/create/detail)
     new/page.tsx        - New workout with exercise selector
   exercises/            - Exercise library management
