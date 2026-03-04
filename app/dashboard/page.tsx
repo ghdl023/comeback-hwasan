@@ -835,7 +835,7 @@ export default function DashboardPage() {
           flex: detailOpen ? "1 1 auto" : "0 0 auto",
           transition: "flex 0.2s ease",
           overflow: "hidden",
-          borderTop: detailOpen ? "none" : "1px solid var(--border)",
+          borderTop: "none",
         }}
         data-testid="detail-panel"
       >
