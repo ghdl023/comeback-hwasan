@@ -49,6 +49,8 @@ middleware.ts           - Next.js middleware (passthrough — auth is client-sid
   - Supports hierarchical structure: muscle_group → parent exercise → sub-exercises via parent_id
 - `workouts` - Workout sessions (user_id, title, performed_at, duration_minutes, notes, created_at)
 - `workout_sets` - Sets within workouts (workout_id, exercise_id, set_number, reps, weight, created_at)
+- `body_records` - Daily body measurements (user_id, date, weight, skeletal_muscle, body_fat, created_at)
+  - Doc ID: `{user_id}_{date}` for deterministic upsert (no duplicates)
 
 ## Muscle Groups (13)
 목, 승모근, 어깨, 가슴, 등, 삼두, 이두, 전완, 복부, 허리, 엉덩이, 하체, 종아리
@@ -82,5 +84,6 @@ middleware.ts           - Next.js middleware (passthrough — auth is client-sid
 - Hydration mismatch warning in dev is a Replit iframe proxy artifact (harmless in production)
 - `getWorkoutSetsByUser()` fetches sets in chunks of 30 (Firestore `in` query limit)
 - All UI text is in Korean (한국어)
-- Mobile bottom tab navigation visible on screens < md breakpoint
+- Navigation via `AppShell` (hamburger header) + `SidePanel` (slide-out drawer)
 - Safe area insets handled for iOS notch devices
+- Workout detail page: header (back, date, today button, routine placeholder), exercise list grouped by exercise, body info section (체중/골격근량/체지방) with debounced auto-save

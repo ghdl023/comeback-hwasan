@@ -41,6 +41,16 @@ export interface WorkoutWithSets extends Workout {
   workout_sets: (WorkoutSet & { exercise?: Exercise })[];
 }
 
+export interface BodyRecord {
+  id: string;
+  user_id: string;
+  date: string;
+  weight: number | null;
+  skeletal_muscle: number | null;
+  body_fat: number | null;
+  created_at: string;
+}
+
 export const MUSCLE_GROUPS = [
   "neck",
   "traps",

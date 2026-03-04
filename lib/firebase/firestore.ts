@@ -1,3 +1,4 @@
+import type { BodyRecord } from "@/lib/types";
 import {
   collection,
   doc,
@@ -235,4 +236,32 @@ export async function addWorkoutSets(
     batch.set(ref, { ...s, created_at: now });
   }
   await batch.commit();
+}
+
+function bodyRecordDocId(userId: string, date: string): string {
+  return `${userId}_${date}`;
+}
+
+export async function getBodyRecord(userId: string, date: string): Promise<BodyRecord | null> {
+  const docId = bodyRecordDocId(userId, date);
+  const snap = await getDoc(doc(db, "body_records", docId));
+  if (!snap.exists()) return null;
+  return serializeDoc<BodyRecord>(snap.id, snap.data());
+}
+
+export async function saveBodyRecord(
+  data: Omit<BodyRecord, "id" | "created_at">
+): Promise<BodyRecord> {
+  const docId = bodyRecordDocId(data.user_id, data.date);
+  const ref = doc(db, "body_records", docId);
+  const now = new Date().toISOString();
+  await setDoc(
+    ref,
+    {
+      ...data,
+      created_at: now,
+    },
+    { merge: true }
+  );
+  return { id: docId, ...data, created_at: now };
 }
