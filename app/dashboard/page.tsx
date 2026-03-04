@@ -130,7 +130,7 @@ export default function DashboardPage() {
           setBodyFat(body.body_fat?.toString() || "");
         }
       })
-      .catch(() => {});
+      .catch((err) => console.error("Body record fetch error:", err));
   }, [user, selectedDateStr]);
 
   useEffect(() => {
@@ -138,7 +138,7 @@ export default function DashboardPage() {
     setMemos([]);
     getMemos(user.uid, selectedDateStr)
       .then(setMemos)
-      .catch(() => {});
+      .catch((err) => console.error("Memos fetch error:", err));
   }, [user, selectedDateStr]);
 
   const handleSaveBody = async () => {

@@ -270,11 +270,12 @@ export async function getMemos(userId: string, date: string): Promise<Memo[]> {
   const q = query(
     collection(db, "memos"),
     where("user_id", "==", userId),
-    where("date", "==", date),
-    orderBy("created_at", "desc")
+    where("date", "==", date)
   );
   const snap = await getDocs(q);
-  return snap.docs.map((d) => serializeDoc<Memo>(d.id, d.data()));
+  const memos = snap.docs.map((d) => serializeDoc<Memo>(d.id, d.data()));
+  memos.sort((a, b) => b.created_at.localeCompare(a.created_at));
+  return memos;
 }
 
 export async function addMemo(
@@ -311,9 +312,10 @@ export async function getMemosByUserMonth(
     collection(db, "memos"),
     where("user_id", "==", userId),
     where("date", ">=", startDate),
-    where("date", "<=", endDate),
-    where("show_on_calendar", "==", true)
+    where("date", "<=", endDate)
   );
   const snap = await getDocs(q);
-  return snap.docs.map((d) => serializeDoc<Memo>(d.id, d.data()));
+  return snap.docs
+    .map((d) => serializeDoc<Memo>(d.id, d.data()))
+    .filter((m) => m.show_on_calendar);
 }
