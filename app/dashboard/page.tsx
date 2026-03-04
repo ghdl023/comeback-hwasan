@@ -192,6 +192,10 @@ export default function DashboardPage() {
   const isSelected = (date: Date) => isSameDay(date, selectedDate);
 
   const handleDateClick = (date: Date) => {
+    if (isSameDay(date, selectedDate)) {
+      handleGoToWorkout();
+      return;
+    }
     setSelectedDate(date);
     if (date.getMonth() !== month || date.getFullYear() !== year) {
       setCurrentMonth(new Date(date.getFullYear(), date.getMonth(), 1));
@@ -224,6 +228,24 @@ export default function DashboardPage() {
     if (dayWorkouts.length === 0) return 0;
     return sorted.indexOf(dayWorkouts[0]) + 1;
   }, [selectedDate, workouts]);
+
+  const selectedWeekIdx = useMemo(() => {
+    for (let w = 0; w < weeks.length; w++) {
+      for (const cell of weeks[w].days) {
+        if (isSameDay(cell.date, selectedDate)) return w;
+      }
+    }
+    return -1;
+  }, [selectedDate, weeks]);
+
+  const getRowFlex = (wIdx: number) => {
+    if (selectedWeekIdx < 0) return 1;
+    const totalRows = weeks.length;
+    const shrinkIdx = selectedWeekIdx < totalRows - 1 ? selectedWeekIdx + 1 : selectedWeekIdx - 1;
+    if (wIdx === selectedWeekIdx) return 1.25;
+    if (wIdx === shrinkIdx) return 0.75;
+    return 1;
+  };
 
   const dayLabels = ["일", "월", "화", "수", "목", "금", "토"];
 
@@ -318,8 +340,8 @@ export default function DashboardPage() {
             return (
               <div
                 key={wIdx}
-                className="grid grid-cols-[2.2rem_repeat(7,1fr)] border-b border-border/30 flex-1"
-                style={{ minHeight: 0 }}
+                className="grid grid-cols-[2.2rem_repeat(7,1fr)] border-b border-border/30"
+                style={{ flex: getRowFlex(wIdx), minHeight: 0, transition: "flex 0.3s ease" }}
               >
                 <div className="flex flex-col items-center justify-start pt-1.5 text-center border-r border-border/20">
                   <span className="text-[9px] font-semibold text-muted-foreground/80 leading-tight">
