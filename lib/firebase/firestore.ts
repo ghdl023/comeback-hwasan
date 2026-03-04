@@ -1,4 +1,4 @@
-import type { BodyRecord } from "@/lib/types";
+import type { BodyRecord, Memo } from "@/lib/types";
 import {
   collection,
   doc,
@@ -264,4 +264,44 @@ export async function saveBodyRecord(
     { merge: true }
   );
   return { id: docId, ...data, created_at: now };
+}
+
+export async function getMemos(userId: string, date: string): Promise<Memo[]> {
+  const q = query(
+    collection(db, "memos"),
+    where("user_id", "==", userId),
+    where("date", "==", date),
+    orderBy("created_at", "desc")
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => serializeDoc<Memo>(d.id, d.data()));
+}
+
+export async function addMemo(
+  data: Omit<Memo, "id" | "created_at">
+): Promise<Memo> {
+  const now = new Date().toISOString();
+  const docRef = await addDoc(collection(db, "memos"), {
+    ...data,
+    created_at: now,
+  });
+  return { id: docRef.id, ...data, created_at: now };
+}
+
+export async function getMemosByUserMonth(
+  userId: string,
+  year: number,
+  month: number
+): Promise<Memo[]> {
+  const startDate = `${year}-${String(month + 1).padStart(2, "0")}-01`;
+  const endDate = `${year}-${String(month + 1).padStart(2, "0")}-31`;
+  const q = query(
+    collection(db, "memos"),
+    where("user_id", "==", userId),
+    where("date", ">=", startDate),
+    where("date", "<=", endDate),
+    where("show_on_calendar", "==", true)
+  );
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => serializeDoc<Memo>(d.id, d.data()));
 }

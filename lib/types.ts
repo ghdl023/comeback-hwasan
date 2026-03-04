@@ -51,6 +51,15 @@ export interface BodyRecord {
   created_at: string;
 }
 
+export interface Memo {
+  id: string;
+  user_id: string;
+  date: string;
+  content: string;
+  show_on_calendar: boolean;
+  created_at: string;
+}
+
 export const MUSCLE_GROUPS = [
   "neck",
   "traps",

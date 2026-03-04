@@ -52,6 +52,7 @@ middleware.ts           - Next.js middleware (passthrough — auth is client-sid
 - `workout_sets` - Sets within workouts (workout_id, exercise_id, set_number, reps, weight, created_at)
 - `body_records` - Daily body measurements (user_id, date, weight, skeletal_muscle, body_fat, created_at)
   - Doc ID: `{user_id}_{date}` for deterministic upsert (no duplicates)
+- `memos` - Daily memos (user_id, date, content, show_on_calendar, created_at)
 
 ## Muscle Groups (13)
 목, 승모근, 어깨, 가슴, 등, 삼두, 이두, 전완, 복부, 허리, 엉덩이, 하체, 종아리
@@ -87,6 +88,9 @@ middleware.ts           - Next.js middleware (passthrough — auth is client-sid
 - All UI text is in Korean (한국어)
 - Navigation via `AppShell` (hamburger header) + `SidePanel` (slide-out drawer)
 - Safe area insets handled for iOS notch devices
-- Dashboard detail panel: expandable bottom panel (not separate route), toggles open/closed with fast animation (0.2s), calendar collapses when panel opens
-- Detail panel header: toggle icon (up/down), date, today button, routine placeholder — same elements in both states
-- Body info section (체중/골격근량/체지방) with debounced auto-save per selected date
+- Dashboard detail panel: expandable bottom panel with 3 tabs (운동 목록, 신체정보, 메모)
+  - Expands to full screen height (hides AppShell header), collapses with fast 0.2s animation
+  - Header: toggle icon (up/down), date (bold) + "N번째 기록", today/routine buttons — same in both states
+  - 운동 목록 tab: exercise list grouped by exercise with set details
+  - 신체정보 tab: 체중/골격근량/체지방 inputs with explicit [저장] button
+  - 메모 tab: memo list with [추가] button → full-screen memo add view (textarea, 캘린더에서보기 checkbox, 추가 button)

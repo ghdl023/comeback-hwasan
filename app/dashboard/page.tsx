@@ -7,8 +7,10 @@ import {
   getExercises,
   getBodyRecord,
   saveBodyRecord,
+  getMemos,
+  addMemo,
 } from "@/lib/firebase/firestore";
-import type { Workout, WorkoutSet, Exercise, MuscleGroup } from "@/lib/types";
+import type { Workout, WorkoutSet, Exercise, MuscleGroup, Memo } from "@/lib/types";
 import { MUSCLE_GROUP_LABELS } from "@/lib/types";
 import { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
@@ -16,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 import { AppShell } from "@/components/app-shell";
 import {
   Loader2,
@@ -30,7 +33,13 @@ import {
   Clock,
   Weight,
   Plus,
+  ArrowLeft,
+  Save,
+  StickyNote,
+  Check,
 } from "lucide-react";
+
+type DetailTab = "exercises" | "body" | "memo";
 
 interface DayCell {
   date: Date;
@@ -67,12 +76,18 @@ export default function DashboardPage() {
   const touchStartY = useRef<number | null>(null);
 
   const [detailOpen, setDetailOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<DetailTab>("exercises");
 
   const [bodyWeight, setBodyWeight] = useState("");
   const [skeletalMuscle, setSkeletalMuscle] = useState("");
   const [bodyFat, setBodyFat] = useState("");
   const [bodySaving, setBodySaving] = useState(false);
-  const [bodyLoading, setBodyLoading] = useState(false);
+
+  const [memos, setMemos] = useState<Memo[]>([]);
+  const [memoAddOpen, setMemoAddOpen] = useState(false);
+  const [memoContent, setMemoContent] = useState("");
+  const [memoShowOnCalendar, setMemoShowOnCalendar] = useState(false);
+  const [memoSaving, setMemoSaving] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -101,7 +116,6 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!user) return;
-    setBodyLoading(true);
     setBodyWeight("");
     setSkeletalMuscle("");
     setBodyFat("");
@@ -113,44 +127,55 @@ export default function DashboardPage() {
           setBodyFat(body.body_fat?.toString() || "");
         }
       })
-      .catch(() => {})
-      .finally(() => setBodyLoading(false));
+      .catch(() => {});
   }, [user, selectedDateStr]);
 
-  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const bodyStateRef = useRef({ bodyWeight: "", skeletalMuscle: "", bodyFat: "" });
-
   useEffect(() => {
-    bodyStateRef.current = { bodyWeight, skeletalMuscle, bodyFat };
-  }, [bodyWeight, skeletalMuscle, bodyFat]);
-
-  const debouncedSaveBody = useCallback(() => {
     if (!user) return;
-    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    saveTimerRef.current = setTimeout(async () => {
-      const { bodyWeight: w, skeletalMuscle: sm, bodyFat: bf } = bodyStateRef.current;
-      setBodySaving(true);
-      try {
-        await saveBodyRecord({
-          user_id: user.uid,
-          date: selectedDateStr,
-          weight: w ? parseFloat(w) : null,
-          skeletal_muscle: sm ? parseFloat(sm) : null,
-          body_fat: bf ? parseFloat(bf) : null,
-        });
-      } catch (err) {
-        console.error("Body record save error:", err);
-      } finally {
-        setBodySaving(false);
-      }
-    }, 800);
+    setMemos([]);
+    getMemos(user.uid, selectedDateStr)
+      .then(setMemos)
+      .catch(() => {});
   }, [user, selectedDateStr]);
 
-  useEffect(() => {
-    return () => {
-      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    };
-  }, []);
+  const handleSaveBody = async () => {
+    if (!user) return;
+    setBodySaving(true);
+    try {
+      await saveBodyRecord({
+        user_id: user.uid,
+        date: selectedDateStr,
+        weight: bodyWeight ? parseFloat(bodyWeight) : null,
+        skeletal_muscle: skeletalMuscle ? parseFloat(skeletalMuscle) : null,
+        body_fat: bodyFat ? parseFloat(bodyFat) : null,
+      });
+    } catch (err) {
+      console.error("Body record save error:", err);
+    } finally {
+      setBodySaving(false);
+    }
+  };
+
+  const handleAddMemo = async () => {
+    if (!user || !memoContent.trim()) return;
+    setMemoSaving(true);
+    try {
+      const newMemo = await addMemo({
+        user_id: user.uid,
+        date: selectedDateStr,
+        content: memoContent.trim(),
+        show_on_calendar: memoShowOnCalendar,
+      });
+      setMemos((prev) => [newMemo, ...prev]);
+      setMemoContent("");
+      setMemoShowOnCalendar(false);
+      setMemoAddOpen(false);
+    } catch (err) {
+      console.error("Memo save error:", err);
+    } finally {
+      setMemoSaving(false);
+    }
+  };
 
   useEffect(() => {
     if (!monthPickerOpen) return;
@@ -174,9 +199,7 @@ export default function DashboardPage() {
     const deltaY = e.changedTouches[0].clientY - touchStartY.current;
     touchStartX.current = null;
     touchStartY.current = null;
-
     if (Math.abs(deltaX) < 50 || Math.abs(deltaX) < Math.abs(deltaY)) return;
-
     if (deltaX > 0) {
       setCurrentMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
     } else {
@@ -221,58 +244,41 @@ export default function DashboardPage() {
     const lastDay = new Date(year, month + 1, 0);
     const startDow = firstDay.getDay();
     const daysInMonth = lastDay.getDate();
-
     const getWeekNumber = (d: Date) => {
       const startOfYear = new Date(d.getFullYear(), 0, 1);
       const diff = d.getTime() - startOfYear.getTime();
       const oneWeek = 604800000;
       return Math.ceil((diff / oneWeek + startOfYear.getDay() + 1) / 7);
     };
-
     const totalCells = startDow + daysInMonth;
     const rowCount = totalCells <= 35 ? 5 : 6;
-
     const calendarStart = new Date(year, month, 1 - startDow);
-
     const rows: WeekRow[] = [];
     for (let w = 0; w < rowCount; w++) {
       const days: DayCell[] = [];
       for (let d = 0; d < 7; d++) {
         const date = new Date(calendarStart.getFullYear(), calendarStart.getMonth(), calendarStart.getDate() + w * 7 + d);
-        days.push({
-          date,
-          isCurrentMonth: date.getMonth() === month && date.getFullYear() === year,
-        });
+        days.push({ date, isCurrentMonth: date.getMonth() === month && date.getFullYear() === year });
       }
-      const sundayOfWeek = days[0].date;
-      rows.push({ weekNumber: getWeekNumber(sundayOfWeek), days });
+      rows.push({ weekNumber: getWeekNumber(days[0].date), days });
     }
-
     return rows;
   }, [year, month]);
 
   const getWeekStats = (week: WeekRow) => {
-    let duration = 0;
-    let setCount = 0;
+    let duration = 0, setCount = 0;
     week.days.forEach((cell) => {
       const info = getDayInfo(cell.date);
-      if (info) {
-        duration += info.duration;
-        setCount += info.setCount;
-      }
+      if (info) { duration += info.duration; setCount += info.setCount; }
     });
     return { duration, setCount };
   };
 
   const isTodayDate = (date: Date) =>
-    date.getFullYear() === today.getFullYear() &&
-    date.getMonth() === today.getMonth() &&
-    date.getDate() === today.getDate();
+    date.getFullYear() === today.getFullYear() && date.getMonth() === today.getMonth() && date.getDate() === today.getDate();
 
   const isSameDay = (a: Date, b: Date) =>
-    a.getFullYear() === b.getFullYear() &&
-    a.getMonth() === b.getMonth() &&
-    a.getDate() === b.getDate();
+    a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 
   const isSelected = (date: Date) => isSameDay(date, selectedDate);
 
@@ -288,9 +294,7 @@ export default function DashboardPage() {
     }
   };
 
-  const handleToggleDetail = () => {
-    setDetailOpen((prev) => !prev);
-  };
+  const handleToggleDetail = () => setDetailOpen((prev) => !prev);
 
   const handleGoToToday = () => {
     const t = new Date();
@@ -300,6 +304,15 @@ export default function DashboardPage() {
   };
 
   const selectedDayInfo = getDayInfo(selectedDate);
+
+  const selectedDateWorkoutIndex = useMemo(() => {
+    const sorted = [...workouts].sort(
+      (a, b) => new Date(a.performed_at).getTime() - new Date(b.performed_at).getTime()
+    );
+    const dw = sorted.filter((w) => isSameDay(new Date(w.performed_at), selectedDate));
+    if (dw.length === 0) return 0;
+    return sorted.indexOf(dw[0]) + 1;
+  }, [selectedDate, workouts]);
 
   const selectedWeekIdx = useMemo(() => {
     for (let w = 0; w < weeks.length; w++) {
@@ -315,8 +328,7 @@ export default function DashboardPage() {
     const totalRows = weeks.length;
     const expandAmount = 0.25;
     if (wIdx === selectedWeekIdx) return 1 + expandAmount;
-    const shrinkEach = expandAmount / (totalRows - 1);
-    return 1 - shrinkEach;
+    return 1 - expandAmount / (totalRows - 1);
   };
 
   const dayLabels = ["일", "월", "화", "수", "목", "금", "토"];
@@ -333,10 +345,7 @@ export default function DashboardPage() {
   const exerciseMap = useMemo(() => new Map(exercises.map((e) => [e.id, e])), [exercises]);
 
   const dayWorkouts = useMemo(() => {
-    return workouts.filter((w) => {
-      const d = new Date(w.performed_at);
-      return isSameDay(d, selectedDate);
-    });
+    return workouts.filter((w) => isSameDay(new Date(w.performed_at), selectedDate));
   }, [workouts, selectedDate]);
 
   const daySets = useMemo(() => {
@@ -345,26 +354,16 @@ export default function DashboardPage() {
   }, [dayWorkouts, sets]);
 
   const groupedByExercise = useMemo(() => {
-    return daySets.reduce(
-      (acc, s) => {
-        if (!acc[s.exercise_id]) acc[s.exercise_id] = [];
-        acc[s.exercise_id].push(s);
-        return acc;
-      },
-      {} as Record<string, WorkoutSet[]>
-    );
+    return daySets.reduce((acc, s) => {
+      if (!acc[s.exercise_id]) acc[s.exercise_id] = [];
+      acc[s.exercise_id].push(s);
+      return acc;
+    }, {} as Record<string, WorkoutSet[]>);
   }, [daySets]);
 
   const totalSets = daySets.length;
-  const totalVolume = useMemo(() => {
-    return daySets.reduce((sum, s) => {
-      return sum + (s.weight ? Number(s.weight) : 0) * (s.reps ?? 0);
-    }, 0);
-  }, [daySets]);
-  const totalDuration = useMemo(() => {
-    return dayWorkouts.reduce((sum, w) => sum + (w.duration_minutes || 0), 0);
-  }, [dayWorkouts]);
-
+  const totalVolume = useMemo(() => daySets.reduce((sum, s) => sum + (s.weight ? Number(s.weight) : 0) * (s.reps ?? 0), 0), [daySets]);
+  const totalDuration = useMemo(() => dayWorkouts.reduce((sum, w) => sum + (w.duration_minutes || 0), 0), [dayWorkouts]);
   const isTodaySelected = isTodayDate(selectedDate);
 
   if (loading) {
@@ -375,72 +374,130 @@ export default function DashboardPage() {
     );
   }
 
-  const detailHeader = (
-    <div
-      className="flex items-center justify-between px-4 py-2 border-b bg-background cursor-pointer"
-      onClick={handleToggleDetail}
-      data-testid="button-toggle-detail"
-    >
-      <Button
-        variant="ghost"
-        size="icon"
-        className="h-7 w-7"
-        onClick={(e) => {
-          e.stopPropagation();
-          handleToggleDetail();
-        }}
-        data-testid="button-detail-toggle-icon"
-      >
-        {detailOpen ? (
-          <ChevronDown className="h-5 w-5" />
-        ) : (
-          <ChevronUp className="h-5 w-5" />
-        )}
-      </Button>
-
-      <div className="flex items-center gap-1.5">
-        <span className="text-sm font-semibold" data-testid="text-detail-date">
-          {selectedDateStr}
-        </span>
-        {isTodaySelected && (
-          <span className="text-[10px] text-primary font-semibold">오늘</span>
-        )}
-      </div>
-
-      <div className="flex items-center gap-0.5">
-        {!isTodaySelected && (
+  if (memoAddOpen) {
+    return (
+      <div className="flex flex-col h-[100dvh] bg-background">
+        <div className="flex items-center gap-3 px-4 py-2.5 border-b shrink-0">
           <Button
             variant="ghost"
             size="icon"
-            className="h-7 w-7"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleGoToToday();
-            }}
-            data-testid="button-go-today"
-            title="오늘"
+            className="h-8 w-8"
+            onClick={() => { setMemoAddOpen(false); setMemoContent(""); setMemoShowOnCalendar(false); }}
+            data-testid="button-memo-back"
           >
-            <CalendarCheck className="h-4 w-4" />
+            <ArrowLeft className="h-5 w-5" />
           </Button>
-        )}
+          <h1 className="text-base font-bold">메모 추가</h1>
+        </div>
+
+        <div className="flex-1 flex flex-col px-4 py-4 overflow-hidden">
+          <Textarea
+            placeholder="메모를 입력하세요..."
+            value={memoContent}
+            onChange={(e) => setMemoContent(e.target.value)}
+            className="flex-1 resize-none text-sm scrollbar-hide"
+            style={{ maxHeight: "70vh" }}
+            data-testid="textarea-memo"
+          />
+        </div>
+
+        <div className="flex items-center justify-between px-4 py-3 border-t shrink-0 safe-area-bottom">
+          <label className="flex items-center gap-2 cursor-pointer" data-testid="label-show-on-calendar">
+            <div
+              className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+                memoShowOnCalendar ? "bg-primary border-primary" : "border-muted-foreground/40"
+              }`}
+              onClick={() => setMemoShowOnCalendar(!memoShowOnCalendar)}
+            >
+              {memoShowOnCalendar && <Check className="h-3 w-3 text-primary-foreground" />}
+            </div>
+            <span className="text-sm text-muted-foreground">캘린더에서 보기</span>
+          </label>
+
+          <Button
+            size="sm"
+            className="h-9 px-5"
+            disabled={!memoContent.trim() || memoSaving}
+            onClick={handleAddMemo}
+            data-testid="button-memo-submit"
+          >
+            {memoSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : "추가"}
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  const detailHeader = (
+    <div
+      className={`flex items-center justify-between px-4 py-2 bg-background cursor-pointer shrink-0 ${detailOpen ? "safe-area-top" : ""}`}
+      onClick={handleToggleDetail}
+      data-testid="button-toggle-detail"
+    >
+      <div className="flex items-center gap-2.5">
         <Button
           variant="ghost"
           size="icon"
-          className="h-7 w-7"
-          data-testid="button-routine"
-          title="루틴 (준비 중)"
-          onClick={(e) => {
-            e.stopPropagation();
-            alert("루틴 기능은 준비 중입니다.");
-          }}
+          className="h-7 w-7 shrink-0"
+          onClick={(e) => { e.stopPropagation(); handleToggleDetail(); }}
+          data-testid="button-detail-toggle-icon"
         >
+          {detailOpen ? <ChevronDown className="h-5 w-5" /> : <ChevronUp className="h-5 w-5" />}
+        </Button>
+        <div className="min-w-0">
+          <p className="text-base font-bold leading-tight" data-testid="text-detail-date">
+            {selectedDateStr}
+            {isTodaySelected && <span className="text-xs text-primary font-semibold ml-1.5">오늘</span>}
+          </p>
+          <p className="text-[11px] text-muted-foreground leading-tight mt-0.5" data-testid="text-workout-index">
+            {selectedDayInfo
+              ? `${selectedDateWorkoutIndex}번째 기록`
+              : "기록 없음"}
+          </p>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-0.5 shrink-0">
+        {!isTodaySelected && (
+          <Button variant="ghost" size="icon" className="h-7 w-7"
+            onClick={(e) => { e.stopPropagation(); handleGoToToday(); }}
+            data-testid="button-go-today" title="오늘">
+            <CalendarCheck className="h-4 w-4" />
+          </Button>
+        )}
+        <Button variant="ghost" size="icon" className="h-7 w-7"
+          data-testid="button-routine" title="루틴 (준비 중)"
+          onClick={(e) => { e.stopPropagation(); alert("루틴 기능은 준비 중입니다."); }}>
           <Repeat className="h-4 w-4" />
         </Button>
       </div>
     </div>
   );
 
-  const detailContent = (
+  const tabBar = (
+    <div className="flex border-t shrink-0 bg-background safe-area-bottom" data-testid="detail-tab-bar">
+      {([
+        { key: "exercises" as DetailTab, label: "운동 목록" },
+        { key: "body" as DetailTab, label: "신체정보" },
+        { key: "memo" as DetailTab, label: "메모" },
+      ]).map((tab) => (
+        <button
+          key={tab.key}
+          className={`flex-1 py-2.5 text-xs font-medium text-center transition-colors ${
+            activeTab === tab.key
+              ? "text-primary border-t-2 border-primary -mt-px"
+              : "text-muted-foreground"
+          }`}
+          onClick={() => setActiveTab(tab.key)}
+          data-testid={`tab-${tab.key}`}
+        >
+          {tab.label}
+        </button>
+      ))}
+    </div>
+  );
+
+  const exercisesTab = (
     <div className="flex-1 overflow-y-auto scrollbar-hide">
       <div className="px-4 py-4 space-y-4">
         {totalSets === 0 ? (
@@ -450,124 +507,68 @@ export default function DashboardPage() {
             </div>
             <div>
               <p className="text-sm font-semibold">운동을 추가해주세요</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                아래 버튼을 눌러 운동을 기록하세요
-              </p>
+              <p className="text-xs text-muted-foreground mt-1">아래 버튼을 눌러 운동을 기록하세요</p>
             </div>
-            <Button
-              className="gap-2"
-              onClick={() => router.push(`/workouts/new?date=${selectedDateStr}`)}
-              data-testid="button-add-workout-empty"
-            >
-              <Plus className="h-4 w-4" />
-              운동 추가
+            <Button className="gap-2" onClick={() => router.push(`/workouts/new?date=${selectedDateStr}`)} data-testid="button-add-workout-empty">
+              <Plus className="h-4 w-4" /> 운동 추가
             </Button>
           </Card>
         ) : (
           <>
             <div>
               <div className="flex items-center justify-between mb-2">
-                <h2 className="text-sm font-bold" data-testid="text-section-title">
-                  운동 기록
-                </h2>
+                <h2 className="text-sm font-bold" data-testid="text-section-title">운동 기록</h2>
                 {totalDuration > 0 && (
                   <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <Clock className="h-3 w-3" />
-                    {totalDuration}분
+                    <Clock className="h-3 w-3" />{totalDuration}분
                   </span>
                 )}
               </div>
-
               <div className="flex items-center gap-3 text-xs text-muted-foreground mb-3">
-                <span className="flex items-center gap-1">
-                  <Dumbbell className="h-3 w-3" />
-                  {totalSets}세트
-                </span>
+                <span className="flex items-center gap-1"><Dumbbell className="h-3 w-3" />{totalSets}세트</span>
                 <span className="flex items-center gap-1">
                   <Weight className="h-3 w-3" />
-                  {totalVolume > 0
-                    ? totalVolume >= 1000
-                      ? `${(totalVolume / 1000).toFixed(1)}t`
-                      : `${totalVolume.toLocaleString()}kg`
-                    : "0kg"}
+                  {totalVolume > 0 ? (totalVolume >= 1000 ? `${(totalVolume / 1000).toFixed(1)}t` : `${totalVolume.toLocaleString()}kg`) : "0kg"}
                 </span>
               </div>
-
-              <Button
-                variant="outline"
-                size="sm"
-                className="gap-1.5 mb-3 h-7 text-xs"
-                onClick={() => router.push(`/workouts/new?date=${selectedDateStr}`)}
-                data-testid="button-add-more-workout"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                운동 추가
+              <Button variant="outline" size="sm" className="gap-1.5 mb-3 h-7 text-xs"
+                onClick={() => router.push(`/workouts/new?date=${selectedDateStr}`)} data-testid="button-add-more-workout">
+                <Plus className="h-3.5 w-3.5" /> 운동 추가
               </Button>
             </div>
-
             <div className="space-y-3">
               {Object.entries(groupedByExercise).map(([exerciseId, exSets]) => {
                 const exercise = exerciseMap.get(exerciseId);
-                const exVolume = exSets.reduce(
-                  (sum, s) =>
-                    sum + (s.weight ? Number(s.weight) : 0) * (s.reps ?? 0),
-                  0
-                );
-
+                const exVolume = exSets.reduce((sum, s) => sum + (s.weight ? Number(s.weight) : 0) * (s.reps ?? 0), 0);
                 return (
-                  <Card
-                    key={exerciseId}
-                    className="overflow-hidden"
-                    data-testid={`card-exercise-${exerciseId}`}
-                  >
+                  <Card key={exerciseId} className="overflow-hidden" data-testid={`card-exercise-${exerciseId}`}>
                     <div className="flex items-center gap-3 px-3.5 py-2 bg-muted/30 border-b">
                       <div className="flex items-center justify-center w-6 h-6 rounded-md bg-primary/10 shrink-0">
                         <Dumbbell className="h-3 w-3 text-primary" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">
-                          {exercise?.name || "알 수 없는 운동"}
-                        </p>
+                        <p className="text-sm font-medium truncate">{exercise?.name || "알 수 없는 운동"}</p>
                         <div className="flex items-center gap-2 mt-0.5">
                           {exercise?.muscle_group && (
-                            <Badge
-                              variant="outline"
-                              className="text-[9px] h-4 px-1.5"
-                            >
-                              {MUSCLE_GROUP_LABELS[
-                                exercise.muscle_group as MuscleGroup
-                              ] || exercise.muscle_group}
+                            <Badge variant="outline" className="text-[9px] h-4 px-1.5">
+                              {MUSCLE_GROUP_LABELS[exercise.muscle_group as MuscleGroup] || exercise.muscle_group}
                             </Badge>
                           )}
                           <span className="text-[10px] text-muted-foreground">
-                            {exSets.length}세트 ·{" "}
-                            {exVolume > 0
-                              ? `${exVolume.toLocaleString()}kg`
-                              : "-"}
+                            {exSets.length}세트 · {exVolume > 0 ? `${exVolume.toLocaleString()}kg` : "-"}
                           </span>
                         </div>
                       </div>
                     </div>
-
                     <div className="px-3.5 py-1.5">
                       <div className="grid grid-cols-3 gap-0 text-[10px] font-medium text-muted-foreground uppercase tracking-wider pb-1">
-                        <span>세트</span>
-                        <span>횟수</span>
-                        <span>무게 (kg)</span>
+                        <span>세트</span><span>횟수</span><span>무게 (kg)</span>
                       </div>
                       {exSets.map((s) => (
-                        <div
-                          key={s.id}
-                          className="grid grid-cols-3 gap-0 text-sm py-1 border-t border-muted/40"
-                          data-testid={`row-set-${s.id}`}
-                        >
-                          <span className="font-mono text-xs text-muted-foreground">
-                            {s.set_number}
-                          </span>
+                        <div key={s.id} className="grid grid-cols-3 gap-0 text-sm py-1 border-t border-muted/40" data-testid={`row-set-${s.id}`}>
+                          <span className="font-mono text-xs text-muted-foreground">{s.set_number}</span>
                           <span className="text-sm">{s.reps ?? "-"}</span>
-                          <span className="text-sm">
-                            {s.weight ? Number(s.weight) : "-"}
-                          </span>
+                          <span className="text-sm">{s.weight ? Number(s.weight) : "-"}</span>
                         </div>
                       ))}
                     </div>
@@ -577,66 +578,75 @@ export default function DashboardPage() {
             </div>
           </>
         )}
+      </div>
+    </div>
+  );
 
-        <div className="pt-2 pb-4">
-          <h2 className="text-sm font-bold mb-3" data-testid="text-body-section">
-            신체 정보
-          </h2>
-          <Card className="p-3">
-            <div className="grid grid-cols-3 gap-3">
-              <div className="space-y-1">
-                <label className="text-[10px] font-medium text-muted-foreground">
-                  체중 (kg)
-                </label>
-                <Input
-                  type="number"
-                  step="0.1"
-                  placeholder="-"
-                  value={bodyWeight}
-                  onChange={(e) => setBodyWeight(e.target.value)}
-                  onBlur={debouncedSaveBody}
-                  className="h-8 text-sm text-center"
-                  data-testid="input-body-weight"
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-medium text-muted-foreground">
-                  골격근량 (kg)
-                </label>
-                <Input
-                  type="number"
-                  step="0.1"
-                  placeholder="-"
-                  value={skeletalMuscle}
-                  onChange={(e) => setSkeletalMuscle(e.target.value)}
-                  onBlur={debouncedSaveBody}
-                  className="h-8 text-sm text-center"
-                  data-testid="input-skeletal-muscle"
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="text-[10px] font-medium text-muted-foreground">
-                  체지방 (%)
-                </label>
-                <Input
-                  type="number"
-                  step="0.1"
-                  placeholder="-"
-                  value={bodyFat}
-                  onChange={(e) => setBodyFat(e.target.value)}
-                  onBlur={debouncedSaveBody}
-                  className="h-8 text-sm text-center"
-                  data-testid="input-body-fat"
-                />
-              </div>
-            </div>
-            {bodySaving && (
-              <p className="text-[10px] text-muted-foreground text-center mt-1.5">
-                저장 중...
-              </p>
-            )}
-          </Card>
+  const bodyTab = (
+    <div className="flex-1 overflow-y-auto scrollbar-hide">
+      <div className="px-4 py-4 space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-bold" data-testid="text-body-section">신체정보</h2>
+          <Button size="sm" className="h-8 px-4 text-xs gap-1.5" onClick={handleSaveBody} disabled={bodySaving} data-testid="button-save-body">
+            {bodySaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+            저장
+          </Button>
         </div>
+        <Card className="p-4">
+          <div className="grid grid-cols-3 gap-3">
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-medium text-muted-foreground">체중 (kg)</label>
+              <Input type="number" step="0.1" placeholder="-" value={bodyWeight} onChange={(e) => setBodyWeight(e.target.value)}
+                className="h-9 text-sm text-center" data-testid="input-body-weight" />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-medium text-muted-foreground">골격근량 (kg)</label>
+              <Input type="number" step="0.1" placeholder="-" value={skeletalMuscle} onChange={(e) => setSkeletalMuscle(e.target.value)}
+                className="h-9 text-sm text-center" data-testid="input-skeletal-muscle" />
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-[10px] font-medium text-muted-foreground">체지방 (%)</label>
+              <Input type="number" step="0.1" placeholder="-" value={bodyFat} onChange={(e) => setBodyFat(e.target.value)}
+                className="h-9 text-sm text-center" data-testid="input-body-fat" />
+            </div>
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
+
+  const memoTab = (
+    <div className="flex-1 overflow-y-auto scrollbar-hide">
+      <div className="px-4 py-4 space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-bold" data-testid="text-memo-section">메모</h2>
+          <Button size="sm" variant="outline" className="h-8 px-4 text-xs gap-1.5"
+            onClick={() => setMemoAddOpen(true)} data-testid="button-open-memo-add">
+            <Plus className="h-3.5 w-3.5" /> 추가
+          </Button>
+        </div>
+        {memos.length === 0 ? (
+          <Card className="p-8 text-center space-y-2">
+            <StickyNote className="h-8 w-8 text-muted-foreground mx-auto" />
+            <p className="text-sm text-muted-foreground">메모가 없습니다</p>
+          </Card>
+        ) : (
+          <div className="space-y-2">
+            {memos.map((m) => (
+              <Card key={m.id} className="p-3" data-testid={`card-memo-${m.id}`}>
+                <p className="text-sm whitespace-pre-wrap">{m.content}</p>
+                <div className="flex items-center gap-2 mt-2">
+                  {m.show_on_calendar && (
+                    <Badge variant="secondary" className="text-[9px] h-4 px-1.5">캘린더 표시</Badge>
+                  )}
+                  <span className="text-[10px] text-muted-foreground ml-auto">
+                    {new Date(m.created_at).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })}
+                  </span>
+                </div>
+              </Card>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -644,47 +654,30 @@ export default function DashboardPage() {
   const collapsedSummary = (
     <div className="px-4 py-2">
       <p className="text-xs text-muted-foreground" data-testid="text-workout-summary">
-        {selectedDayInfo
-          ? `${selectedDayInfo.workoutCount}회 운동 · ${selectedDayInfo.setCount}세트`
-          : "기록 없음"}
+        {selectedDayInfo ? `${selectedDayInfo.workoutCount}회 운동 · ${selectedDayInfo.setCount}세트` : "기록 없음"}
       </p>
     </div>
   );
 
   return (
     <AppShell
+      showHeader={!detailOpen}
       headerCenter={
         <div ref={monthPickerRef} className="relative">
-          <button
-            className="flex items-center gap-1.5 text-sm font-semibold px-2 py-1 rounded-md hover:bg-muted/50 transition-colors"
-            onClick={() => setMonthPickerOpen(!monthPickerOpen)}
-            data-testid="button-month-picker"
-          >
+          <button className="flex items-center gap-1.5 text-sm font-semibold px-2 py-1 rounded-md hover:bg-muted/50 transition-colors"
+            onClick={() => setMonthPickerOpen(!monthPickerOpen)} data-testid="button-month-picker">
             {year}.{String(month + 1).padStart(2, "0")}
             <ChevronRight className={`h-3 w-3 text-muted-foreground transition-transform ${monthPickerOpen ? "rotate-90" : ""}`} />
           </button>
-
           {monthPickerOpen && (
             <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 bg-background border rounded-lg shadow-lg p-2 z-20 flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7"
-                onClick={() => { setCurrentMonth(new Date(year, month - 1, 1)); }}
-                data-testid="button-prev-month"
-              >
+              <Button variant="ghost" size="icon" className="h-7 w-7"
+                onClick={() => setCurrentMonth(new Date(year, month - 1, 1))} data-testid="button-prev-month">
                 <ChevronLeft className="h-4 w-4" />
               </Button>
-              <span className="text-sm font-medium whitespace-nowrap min-w-[5.5rem] text-center">
-                {year}년 {month + 1}월
-              </span>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7"
-                onClick={() => { setCurrentMonth(new Date(year, month + 1, 1)); }}
-                data-testid="button-next-month"
-              >
+              <span className="text-sm font-medium whitespace-nowrap min-w-[5.5rem] text-center">{year}년 {month + 1}월</span>
+              <Button variant="ghost" size="icon" className="h-7 w-7"
+                onClick={() => setCurrentMonth(new Date(year, month + 1, 1))} data-testid="button-next-month">
                 <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
@@ -707,48 +700,28 @@ export default function DashboardPage() {
           flex: detailOpen ? "0 0 0px" : "1 1 auto",
           opacity: detailOpen ? 0 : 1,
           transition: "flex 0.2s ease, opacity 0.15s ease",
+          pointerEvents: detailOpen ? "none" : "auto",
         }}
       >
         <div className="grid grid-cols-[2.2rem_repeat(7,1fr)] text-center shrink-0 border-b">
           <div className="py-1.5" />
           {dayLabels.map((label, i) => (
-            <div
-              key={label}
-              className={`py-1.5 text-[11px] font-medium ${
-                i === 0 ? "text-red-400" : i === 6 ? "text-blue-400" : "text-muted-foreground"
-              }`}
-            >
+            <div key={label} className={`py-1.5 text-[11px] font-medium ${i === 0 ? "text-red-400" : i === 6 ? "text-blue-400" : "text-muted-foreground"}`}>
               {label}
             </div>
           ))}
         </div>
-
         <div className="flex-1 flex flex-col">
           {weeks.map((week, wIdx) => {
             const stats = getWeekStats(week);
-
             return (
-              <div
-                key={wIdx}
-                className="grid grid-cols-[2.2rem_repeat(7,1fr)] border-b border-border/30"
-                style={{ flex: getRowFlex(wIdx), minHeight: 0, transition: "flex 0.3s ease" }}
-              >
+              <div key={wIdx} className="grid grid-cols-[2.2rem_repeat(7,1fr)] border-b border-border/30"
+                style={{ flex: getRowFlex(wIdx), minHeight: 0, transition: "flex 0.3s ease" }}>
                 <div className="flex flex-col items-center justify-start pt-1.5 text-center border-r border-border/20">
-                  <span className="text-[9px] font-semibold text-muted-foreground/80 leading-tight">
-                    {week.weekNumber}주
-                  </span>
-                  {stats.duration > 0 && (
-                    <span className="text-[8px] text-muted-foreground/60 leading-tight mt-0.5">
-                      {formatDuration(stats.duration)}
-                    </span>
-                  )}
-                  {stats.setCount > 0 && (
-                    <span className="text-[8px] text-muted-foreground/60 leading-tight">
-                      {stats.setCount}s
-                    </span>
-                  )}
+                  <span className="text-[9px] font-semibold text-muted-foreground/80 leading-tight">{week.weekNumber}주</span>
+                  {stats.duration > 0 && <span className="text-[8px] text-muted-foreground/60 leading-tight mt-0.5">{formatDuration(stats.duration)}</span>}
+                  {stats.setCount > 0 && <span className="text-[8px] text-muted-foreground/60 leading-tight">{stats.setCount}s</span>}
                 </div>
-
                 {week.days.map((cell, dIdx) => {
                   const { date, isCurrentMonth } = cell;
                   const info = getDayInfo(date);
@@ -756,45 +729,29 @@ export default function DashboardPage() {
                   const sel = isSelected(date);
                   const isSunday = date.getDay() === 0;
                   const isSaturday = date.getDay() === 6;
-
                   return (
-                    <button
-                      key={`${wIdx}-${dIdx}`}
-                      className={`p-0.5 flex flex-col items-center transition-colors overflow-hidden ${
-                        sel ? "bg-primary/5" : ""
-                      } ${!isCurrentMonth ? "opacity-40" : ""}`}
+                    <button key={`${wIdx}-${dIdx}`}
+                      className={`p-0.5 flex flex-col items-center transition-colors overflow-hidden ${sel ? "bg-primary/5" : ""} ${!isCurrentMonth ? "opacity-40" : ""}`}
                       onClick={() => handleDateClick(date)}
-                      data-testid={`button-date-${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`}
-                    >
-                      <div
-                        className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium shrink-0 ${
-                          todayDate
-                            ? "bg-primary text-primary-foreground"
-                            : sel
-                              ? "bg-primary/20 text-primary"
-                              : isSunday
-                                ? "text-red-400"
-                                : isSaturday
-                                  ? "text-blue-400"
-                                  : "text-foreground"
-                        }`}
-                      >
+                      data-testid={`button-date-${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`}>
+                      <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium shrink-0 ${
+                        todayDate ? "bg-primary text-primary-foreground"
+                          : sel ? "bg-primary/20 text-primary"
+                          : isSunday ? "text-red-400"
+                          : isSaturday ? "text-blue-400"
+                          : "text-foreground"}`}>
                         {date.getDate()}
                       </div>
                       {info && isCurrentMonth && (
                         <div className="w-full mt-0.5 space-y-px overflow-hidden">
                           {info.duration > 0 && (
                             <div className="bg-sky-100 dark:bg-sky-900/30 rounded-sm px-0.5 py-px">
-                              <p className="text-[7px] text-sky-700 dark:text-sky-300 font-medium truncate text-center leading-tight">
-                                {info.duration}분
-                              </p>
+                              <p className="text-[7px] text-sky-700 dark:text-sky-300 font-medium truncate text-center leading-tight">{info.duration}분</p>
                             </div>
                           )}
                           {info.setCount > 0 && (
                             <div className="bg-sky-50 dark:bg-sky-900/20 rounded-sm px-0.5 py-px">
-                              <p className="text-[7px] text-sky-600 dark:text-sky-400 truncate text-center leading-tight">
-                                {info.setCount}세트
-                              </p>
+                              <p className="text-[7px] text-sky-600 dark:text-sky-400 truncate text-center leading-tight">{info.setCount}세트</p>
                             </div>
                           )}
                         </div>
@@ -809,16 +766,26 @@ export default function DashboardPage() {
       </div>
 
       <div
-        className="border-t bg-background flex flex-col safe-area-bottom"
+        className="bg-background flex flex-col"
         style={{
           flex: detailOpen ? "1 1 auto" : "0 0 auto",
           transition: "flex 0.2s ease",
           overflow: "hidden",
+          borderTop: detailOpen ? "none" : "1px solid var(--border)",
         }}
         data-testid="detail-panel"
       >
         {detailHeader}
-        {detailOpen ? detailContent : collapsedSummary}
+        {detailOpen ? (
+          <>
+            {activeTab === "exercises" && exercisesTab}
+            {activeTab === "body" && bodyTab}
+            {activeTab === "memo" && memoTab}
+            {tabBar}
+          </>
+        ) : (
+          collapsedSummary
+        )}
       </div>
     </div>
     </AppShell>
