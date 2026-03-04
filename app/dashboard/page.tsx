@@ -11,6 +11,8 @@ import {
   addMemo,
   updateMemo,
   deleteMemo,
+  addWorkout,
+  addWorkoutSets,
 } from "@/lib/firebase/firestore";
 import type { Workout, WorkoutSet, Exercise, MuscleGroup, Memo } from "@/lib/types";
 import { MUSCLE_GROUP_LABELS } from "@/lib/types";
@@ -22,6 +24,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { AppShell } from "@/components/app-shell";
+import { ExerciseSelector } from "@/components/exercise-selector";
 import {
   Loader2,
   Settings,
@@ -91,6 +94,7 @@ export default function DashboardPage() {
   const [memoShowOnCalendar, setMemoShowOnCalendar] = useState(false);
   const [memoSaving, setMemoSaving] = useState(false);
   const [editingMemo, setEditingMemo] = useState<Memo | null>(null);
+  const [exerciseSelectorOpen, setExerciseSelectorOpen] = useState(false);
 
   useEffect(() => {
     if (!user) return;
@@ -177,6 +181,37 @@ export default function DashboardPage() {
       console.error("Memo save error:", err);
     } finally {
       setMemoSaving(false);
+    }
+  };
+
+  const handleExercisesSelected = async (selectedExercises: Exercise[]) => {
+    if (!user || selectedExercises.length === 0) return;
+    try {
+      const workout = await addWorkout({
+        user_id: user.uid,
+        title: selectedExercises.map((e) => e.name).join(", "),
+        performed_at: selectedDateStr,
+        duration_minutes: null,
+        notes: null,
+      });
+      const setsToCreate = selectedExercises.map((ex, idx) => ({
+        workout_id: workout.id,
+        exercise_id: ex.id,
+        set_number: idx + 1,
+        reps: null,
+        weight: null,
+      }));
+      await addWorkoutSets(setsToCreate);
+      const [w, s, e] = await Promise.all([
+        getWorkouts(user.uid),
+        getWorkoutSetsByUser(user.uid),
+        getExercises(user.uid),
+      ]);
+      setWorkouts(w);
+      setAllSets(s);
+      setExercisesData(e);
+    } catch (err) {
+      console.error("Workout create error:", err);
     }
   };
 
@@ -561,7 +596,7 @@ export default function DashboardPage() {
               <p className="text-sm font-semibold">운동을 추가해주세요</p>
               <p className="text-xs text-muted-foreground mt-1">아래 버튼을 눌러 운동을 기록하세요</p>
             </div>
-            <Button className="gap-2" onClick={() => router.push(`/workouts/new?date=${selectedDateStr}`)} data-testid="button-add-workout-empty">
+            <Button className="gap-2" onClick={() => setExerciseSelectorOpen(true)} data-testid="button-add-workout-empty">
               <Plus className="h-4 w-4" /> 운동 추가
             </Button>
           </Card>
@@ -584,7 +619,7 @@ export default function DashboardPage() {
                 </span>
               </div>
               <Button variant="outline" size="sm" className="gap-1.5 mb-3 h-7 text-xs"
-                onClick={() => router.push(`/workouts/new?date=${selectedDateStr}`)} data-testid="button-add-more-workout">
+                onClick={() => setExerciseSelectorOpen(true)} data-testid="button-add-more-workout">
                 <Plus className="h-3.5 w-3.5" /> 운동 추가
               </Button>
             </div>
@@ -845,6 +880,11 @@ export default function DashboardPage() {
         ) : null}
       </div>
     </div>
+    <ExerciseSelector
+      open={exerciseSelectorOpen}
+      onClose={() => setExerciseSelectorOpen(false)}
+      onSelect={handleExercisesSelected}
+    />
     </AppShell>
   );
 }
