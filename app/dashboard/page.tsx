@@ -288,10 +288,12 @@ export default function DashboardPage() {
     const startDow = firstDay.getDay();
     const daysInMonth = lastDay.getDate();
     const getWeekNumber = (d: Date) => {
-      const startOfYear = new Date(d.getFullYear(), 0, 1);
-      const diff = d.getTime() - startOfYear.getTime();
-      const oneWeek = 604800000;
-      return Math.ceil((diff / oneWeek + startOfYear.getDay() + 1) / 7);
+      const target = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+      target.setDate(target.getDate() + 3 - ((target.getDay() + 6) % 7));
+      const jan4 = new Date(target.getFullYear(), 0, 4);
+      jan4.setDate(jan4.getDate() + 3 - ((jan4.getDay() + 6) % 7));
+      const diff = target.getTime() - jan4.getTime();
+      return 1 + Math.round(diff / 604800000);
     };
     const totalCells = startDow + daysInMonth;
     const rowCount = totalCells <= 35 ? 5 : 6;
@@ -715,13 +717,6 @@ export default function DashboardPage() {
     </div>
   );
 
-  const collapsedSummary = (
-    <div className="px-4 py-2">
-      <p className="text-xs text-muted-foreground" data-testid="text-workout-summary">
-        {selectedDayInfo ? `${selectedDayInfo.workoutCount}회 운동 · ${selectedDayInfo.setCount}세트` : "기록 없음"}
-      </p>
-    </div>
-  );
 
   return (
     <AppShell
@@ -847,9 +842,7 @@ export default function DashboardPage() {
             {activeTab === "memo" && memoTab}
             {tabBar}
           </>
-        ) : (
-          collapsedSummary
-        )}
+        ) : null}
       </div>
     </div>
     </AppShell>
