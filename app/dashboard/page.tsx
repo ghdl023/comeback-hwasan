@@ -569,7 +569,12 @@ export default function DashboardPage() {
           <FloatingTimer
             onNavigate={() => {
               handleClose();
-              if (timerTarget) setSetEditExerciseId(timerTarget.exerciseId);
+              if (timerTarget) {
+                const [y, m, d] = timerTarget.date.split("-").map(Number);
+                setSelectedDate(new Date(y, m - 1, d));
+                setCurrentMonth(new Date(y, m - 1, 1));
+                setSetEditExerciseId(timerTarget.exerciseId);
+              }
             }}
           />
         )}
@@ -983,6 +988,10 @@ export default function DashboardPage() {
       <FloatingTimer
         onNavigate={() => {
           if (timerTarget) {
+            const [y, m, d] = timerTarget.date.split("-").map(Number);
+            const targetDate = new Date(y, m - 1, d);
+            setSelectedDate(targetDate);
+            setCurrentMonth(new Date(y, m - 1, 1));
             setSetEditExerciseId(timerTarget.exerciseId);
           }
         }}
