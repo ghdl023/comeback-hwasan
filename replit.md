@@ -92,6 +92,8 @@ middleware.ts           - Next.js middleware (passthrough — auth is client-sid
 - Navigation via `AppShell` (hamburger header) + `SidePanel` (slide-out drawer)
 - Safe area insets handled for iOS notch devices
 - Rest timer: global context (`RestTimerProvider` in `rest-timer-context.tsx`) persists timer across views; `FloatingTimer` shows circular progress button when away from set editor; clicking navigates back to the exercise
+- Calendar cells: show muscle group tags (color-coded), 신체 indicator, memo preview text for each day with data
+- Monthly data (memos, body records) fetched via single-field Firestore queries (user_id only) + client-side date prefix filtering to avoid composite index requirement
 - Dashboard detail panel: expandable bottom panel with 3 tabs (운동 목록, 신체정보, 메모)
   - Expands to full screen height (hides AppShell header), collapses with fast 0.2s animation
   - Header: toggle icon (up/down), date (bold) + "N번째 기록", today/routine buttons — same in both states

@@ -14,8 +14,10 @@ import {
   addWorkout,
   addWorkoutSets,
   deleteExerciseSetsFromWorkouts,
+  getMemosByUserMonth,
+  getBodyRecordsByMonth,
 } from "@/lib/firebase/firestore";
-import type { Workout, WorkoutSet, Exercise, MuscleGroup, Memo } from "@/lib/types";
+import type { Workout, WorkoutSet, Exercise, MuscleGroup, Memo, BodyRecord } from "@/lib/types";
 import { MUSCLE_GROUP_LABELS } from "@/lib/types";
 import { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
@@ -65,6 +67,9 @@ interface DayInfo {
   duration: number;
   setCount: number;
   workoutCount: number;
+  muscleGroups: { name: string; count: number }[];
+  hasBodyRecord: boolean;
+  memoText: string | null;
 }
 
 export default function DashboardPage() {
@@ -100,6 +105,8 @@ export default function DashboardPage() {
   const [memoShowOnCalendar, setMemoShowOnCalendar] = useState(false);
   const [memoSaving, setMemoSaving] = useState(false);
   const [editingMemo, setEditingMemo] = useState<Memo | null>(null);
+  const [monthlyMemos, setMonthlyMemos] = useState<Memo[]>([]);
+  const [monthlyBodyRecords, setMonthlyBodyRecords] = useState<BodyRecord[]>([]);
   const [exerciseSelectorOpen, setExerciseSelectorOpen] = useState(false);
   const [expandedExercises, setExpandedExercises] = useState<Set<string>>(new Set());
   const [setEditExerciseId, setSetEditExerciseId] = useState<string | null>(null);
@@ -153,17 +160,37 @@ export default function DashboardPage() {
       .catch((err) => console.error("Memos fetch error:", err));
   }, [user, selectedDateStr]);
 
+  useEffect(() => {
+    if (!user) return;
+    const y = currentMonth.getFullYear();
+    const m = currentMonth.getMonth();
+    Promise.all([
+      getMemosByUserMonth(user.uid, y, m),
+      getBodyRecordsByMonth(user.uid, y, m),
+    ]).then(([memos, bodies]) => {
+      setMonthlyMemos(memos);
+      setMonthlyBodyRecords(bodies);
+    }).catch(console.error);
+  }, [user, currentMonth]);
+
   const handleSaveBody = async () => {
     if (!user) return;
     setBodySaving(true);
     try {
-      await saveBodyRecord({
+      const saved = await saveBodyRecord({
         user_id: user.uid,
         date: selectedDateStr,
         weight: bodyWeight ? parseFloat(bodyWeight) : null,
         skeletal_muscle: skeletalMuscle ? parseFloat(skeletalMuscle) : null,
         body_fat: bodyFat ? parseFloat(bodyFat) : null,
       });
+      const prefix = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, "0")}`;
+      if (selectedDateStr.startsWith(prefix)) {
+        setMonthlyBodyRecords((prev) => {
+          const filtered = prev.filter((b) => b.date !== selectedDateStr);
+          return [...filtered, saved];
+        });
+      }
     } catch (err) {
       console.error("Body record save error:", err);
     } finally {
@@ -182,6 +209,12 @@ export default function DashboardPage() {
         show_on_calendar: memoShowOnCalendar,
       });
       setMemos((prev) => [newMemo, ...prev]);
+      if (newMemo.show_on_calendar) {
+        const prefix = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, "0")}`;
+        if (newMemo.date.startsWith(prefix)) {
+          setMonthlyMemos((prev) => [newMemo, ...prev]);
+        }
+      }
       setMemoContent("");
       setMemoShowOnCalendar(false);
       setMemoAddOpen(false);
@@ -249,6 +282,7 @@ export default function DashboardPage() {
     try {
       await deleteMemo(memoId);
       setMemos((prev) => prev.filter((m) => m.id !== memoId));
+      setMonthlyMemos((prev) => prev.filter((m) => m.id !== memoId));
     } catch (err) {
       console.error("Memo delete error:", err);
     }
@@ -275,6 +309,20 @@ export default function DashboardPage() {
             : m
         )
       );
+      {
+        const prefix = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, "0")}`;
+        if (editingMemo.date.startsWith(prefix)) {
+          if (memoShowOnCalendar) {
+            setMonthlyMemos((prev) => {
+              const exists = prev.some((m) => m.id === editingMemo.id);
+              if (exists) return prev.map((m) => m.id === editingMemo.id ? { ...m, content: memoContent.trim(), show_on_calendar: true } : m);
+              return [...prev, { ...editingMemo, content: memoContent.trim(), show_on_calendar: true }];
+            });
+          } else {
+            setMonthlyMemos((prev) => prev.filter((m) => m.id !== editingMemo.id));
+          }
+        }
+      }
       setEditingMemo(null);
       setMemoContent("");
       setMemoShowOnCalendar(false);
@@ -325,19 +373,53 @@ export default function DashboardPage() {
     return map;
   }, [sets]);
 
+  const exerciseMap = useMemo(() => new Map(exercises.map((e) => [e.id, e])), [exercises]);
+
   const dayInfoMap = useMemo(() => {
     const map = new Map<string, DayInfo>();
+
     workouts.forEach((w) => {
       const d = new Date(w.performed_at);
       const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-      const existing = map.get(key) || { duration: 0, setCount: 0, workoutCount: 0 };
+      const existing = map.get(key) || { duration: 0, setCount: 0, workoutCount: 0, muscleGroups: [], hasBodyRecord: false, memoText: null };
       existing.duration += w.duration_minutes || 0;
       existing.workoutCount += 1;
-      existing.setCount += (setsByWorkoutId.get(w.id) || []).length;
+      const wSets = setsByWorkoutId.get(w.id) || [];
+      existing.setCount += wSets.length;
+      const mgCounts = new Map<string, number>();
+      existing.muscleGroups.forEach((mg) => mgCounts.set(mg.name, mg.count));
+      wSets.forEach((s) => {
+        const ex = exerciseMap.get(s.exercise_id);
+        if (ex?.muscle_group) {
+          const label = MUSCLE_GROUP_LABELS[ex.muscle_group as MuscleGroup] || ex.muscle_group;
+          mgCounts.set(label, (mgCounts.get(label) || 0) + 1);
+        }
+      });
+      existing.muscleGroups = Array.from(mgCounts.entries()).map(([name, count]) => ({ name, count }));
       map.set(key, existing);
     });
+
+    const addNonWorkoutInfo = (dateStr: string) => {
+      const [y, m, d] = dateStr.split("-").map(Number);
+      const key = `${y}-${m - 1}-${d}`;
+      if (!map.has(key)) {
+        map.set(key, { duration: 0, setCount: 0, workoutCount: 0, muscleGroups: [], hasBodyRecord: false, memoText: null });
+      }
+      return map.get(key)!;
+    };
+
+    monthlyBodyRecords.forEach((b) => {
+      const info = addNonWorkoutInfo(b.date);
+      info.hasBodyRecord = true;
+    });
+
+    monthlyMemos.forEach((m) => {
+      const info = addNonWorkoutInfo(m.date);
+      if (!info.memoText) info.memoText = m.content;
+    });
+
     return map;
-  }, [workouts, setsByWorkoutId]);
+  }, [workouts, setsByWorkoutId, exerciseMap, monthlyMemos, monthlyBodyRecords]);
 
   const getDayInfo = (date: Date): DayInfo | null => {
     const key = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
@@ -451,8 +533,6 @@ export default function DashboardPage() {
     }
     return `${mins}분`;
   };
-
-  const exerciseMap = useMemo(() => new Map(exercises.map((e) => [e.id, e])), [exercises]);
 
   const dayWorkouts = useMemo(() => {
     return workouts.filter((w) => isSameDay(new Date(w.performed_at), selectedDate));
@@ -937,14 +1017,19 @@ export default function DashboardPage() {
                       </div>
                       {info && isCurrentMonth && (
                         <div className="w-full mt-0.5 space-y-px overflow-hidden">
-                          {info.duration > 0 && (
-                            <div className="bg-sky-100 dark:bg-sky-900/30 rounded-sm px-0.5 py-px">
-                              <p className="text-[7px] text-sky-700 dark:text-sky-300 font-medium truncate text-center leading-tight">{info.duration}분</p>
+                          {info.muscleGroups.map((mg) => (
+                            <div key={mg.name} className="bg-sky-100 dark:bg-sky-900/30 rounded-sm px-0.5 py-px">
+                              <p className="text-[8px] text-sky-700 dark:text-sky-300 font-medium truncate text-left leading-tight">{mg.name} {mg.count}</p>
+                            </div>
+                          ))}
+                          {info.hasBodyRecord && (
+                            <div className="bg-emerald-100 dark:bg-emerald-900/30 rounded-sm px-0.5 py-px">
+                              <p className="text-[8px] text-emerald-700 dark:text-emerald-300 font-medium truncate text-left leading-tight">신체</p>
                             </div>
                           )}
-                          {info.setCount > 0 && (
-                            <div className="bg-sky-50 dark:bg-sky-900/20 rounded-sm px-0.5 py-px">
-                              <p className="text-[7px] text-sky-600 dark:text-sky-400 truncate text-center leading-tight">{info.setCount}세트</p>
+                          {info.memoText && (
+                            <div className="bg-yellow-100 dark:bg-yellow-900/30 rounded-sm px-0.5 py-px">
+                              <p className="text-[8px] text-yellow-800 dark:text-yellow-300 truncate text-left leading-tight">{info.memoText}</p>
                             </div>
                           )}
                         </div>

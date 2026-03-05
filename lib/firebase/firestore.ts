@@ -311,6 +311,22 @@ export async function saveBodyRecord(
   return { id: docId, ...data, created_at: now };
 }
 
+export async function getBodyRecordsByMonth(
+  userId: string,
+  year: number,
+  month: number
+): Promise<BodyRecord[]> {
+  const prefix = `${year}-${String(month + 1).padStart(2, "0")}`;
+  const q = query(
+    collection(db, "body_records"),
+    where("user_id", "==", userId)
+  );
+  const snap = await getDocs(q);
+  return snap.docs
+    .map((d) => serializeDoc<BodyRecord>(d.id, d.data()))
+    .filter((r) => r.date.startsWith(prefix));
+}
+
 export async function getMemos(userId: string, date: string): Promise<Memo[]> {
   const q = query(
     collection(db, "memos"),
@@ -351,16 +367,13 @@ export async function getMemosByUserMonth(
   year: number,
   month: number
 ): Promise<Memo[]> {
-  const startDate = `${year}-${String(month + 1).padStart(2, "0")}-01`;
-  const endDate = `${year}-${String(month + 1).padStart(2, "0")}-31`;
+  const prefix = `${year}-${String(month + 1).padStart(2, "0")}`;
   const q = query(
     collection(db, "memos"),
-    where("user_id", "==", userId),
-    where("date", ">=", startDate),
-    where("date", "<=", endDate)
+    where("user_id", "==", userId)
   );
   const snap = await getDocs(q);
   return snap.docs
     .map((d) => serializeDoc<Memo>(d.id, d.data()))
-    .filter((m) => m.show_on_calendar);
+    .filter((m) => m.date.startsWith(prefix) && m.show_on_calendar);
 }
