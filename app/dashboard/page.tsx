@@ -675,7 +675,11 @@ export default function DashboardPage() {
               </Button>
             </div>
             <div className="space-y-3">
-              {Object.entries(groupedByExercise).map(([exerciseId, exSets]) => {
+              {Object.entries(groupedByExercise).sort(([, aSets], [, bSets]) => {
+                const aMin = Math.min(...aSets.map(s => new Date(s.created_at).getTime()));
+                const bMin = Math.min(...bSets.map(s => new Date(s.created_at).getTime()));
+                return aMin - bMin;
+              }).map(([exerciseId, exSets]) => {
                 const exercise = exerciseMap.get(exerciseId);
                 const isExpanded = expandedExercises.has(exerciseId);
                 return (
