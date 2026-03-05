@@ -501,25 +501,25 @@ function BulkEditPopup({
         data-testid="bulk-edit-popup"
       >
         <div className="px-4 py-3 border-b flex items-center justify-between">
-          <h3 className="text-sm font-bold">일괄수정</h3>
-          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onCancel}>
+          <h3 className="text-base font-bold">일괄수정</h3>
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onCancel}>
             <X className="h-4 w-4" />
           </Button>
         </div>
 
         <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
           {localSets.map((s, idx) => (
-            <div key={s.id || idx} className="flex items-center gap-3 py-1.5 border-b border-muted/30" data-testid={`bulk-set-${idx}`}>
+            <div key={s.id || idx} className="flex items-center gap-3 py-2 border-b border-muted/30" data-testid={`bulk-set-${idx}`}>
               <button
-                className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${
+                className={`w-6 h-6 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${
                   checked.has(idx) ? "bg-primary border-primary" : "border-muted-foreground/30"
                 }`}
                 onClick={() => toggleCheck(idx)}
               >
-                {checked.has(idx) && <Check className="h-3 w-3 text-primary-foreground" />}
+                {checked.has(idx) && <Check className="h-3.5 w-3.5 text-primary-foreground" />}
               </button>
-              <span className="text-xs font-bold text-muted-foreground w-5">{s.set_number}</span>
-              <span className="text-xs flex-1">
+              <span className="text-sm font-bold text-muted-foreground w-6">{s.set_number}</span>
+              <span className="text-sm flex-1">
                 {s.weight ?? "-"}kg · {s.reps ?? "-"}회 · {formatRestLabel(s.rest_seconds)}
               </span>
             </div>
@@ -533,7 +533,7 @@ function BulkEditPopup({
               return (
                 <button
                   key={f}
-                  className={`flex-1 py-1.5 text-xs rounded-lg border transition-colors ${
+                  className={`flex-1 py-2 text-sm rounded-lg border transition-colors ${
                     field === f ? "bg-primary text-primary-foreground border-primary" : "border-border"
                   }`}
                   onClick={() => { setField(f); setInputValue(""); }}
@@ -546,46 +546,49 @@ function BulkEditPopup({
           </div>
 
           <div className="flex items-center gap-2">
-            {isRestField ? (
-              <Input
-                type="text"
-                inputMode="numeric"
-                placeholder="00:00"
-                className="h-8 text-sm flex-1 text-center"
-                value={inputValue ? formatRestDisplay(Number(inputValue.replace(/\D/g, ""))) : ""}
-                onChange={(e) => {
-                  const raw = e.target.value.replace(/\D/g, "");
-                  setInputValue(raw);
-                }}
-                data-testid="input-bulk-value"
-              />
-            ) : (
-              <Input
-                type="number"
-                placeholder={`${fieldLabel} 값`}
-                className="h-8 text-sm flex-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                data-testid="input-bulk-value"
-              />
-            )}
-            <Button variant="outline" size="sm" className="h-8 text-xs px-3" onClick={() => applyAction("set")} data-testid="button-bulk-set">
-              지정
-            </Button>
-            <Button size="sm" className="h-8 text-xs px-3 bg-blue-500/15 text-blue-600 hover:bg-blue-500/25 border-0" variant="outline" onClick={() => applyAction("decrease")} data-testid="button-bulk-decrease">
-              감소
-            </Button>
-            <Button size="sm" className="h-8 text-xs px-3 bg-red-500/15 text-red-600 hover:bg-red-500/25 border-0" variant="outline" onClick={() => applyAction("increase")} data-testid="button-bulk-increase">
-              증가
-            </Button>
+            <span className="text-sm font-medium text-muted-foreground shrink-0">{fieldLabel}</span>
+            <div className="flex-1 flex items-center justify-end gap-2">
+              {isRestField ? (
+                <Input
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="00:00"
+                  className="h-9 text-sm w-20 shrink-0 text-center"
+                  value={inputValue ? formatRestDisplay(Number(inputValue.replace(/\D/g, ""))) : ""}
+                  onChange={(e) => {
+                    const raw = e.target.value.replace(/\D/g, "");
+                    setInputValue(raw);
+                  }}
+                  data-testid="input-bulk-value"
+                />
+              ) : (
+                <Input
+                  type="number"
+                  placeholder="값"
+                  className="h-9 text-sm w-20 shrink-0 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  data-testid="input-bulk-value"
+                />
+              )}
+              <Button variant="outline" size="sm" className="h-9 text-sm px-3" onClick={() => applyAction("set")} data-testid="button-bulk-set">
+                지정
+              </Button>
+              <Button size="sm" className="h-9 text-sm px-3 bg-blue-500/15 text-blue-600 hover:bg-blue-500/25 border-0" variant="outline" onClick={() => applyAction("decrease")} data-testid="button-bulk-decrease">
+                감소
+              </Button>
+              <Button size="sm" className="h-9 text-sm px-3 bg-red-500/15 text-red-600 hover:bg-red-500/25 border-0" variant="outline" onClick={() => applyAction("increase")} data-testid="button-bulk-increase">
+                증가
+              </Button>
+            </div>
           </div>
 
           <div className="flex items-center gap-2 pt-1">
-            <Button variant="outline" className="flex-1 h-9 text-sm" onClick={onCancel} data-testid="button-bulk-cancel">
+            <Button variant="outline" className="flex-1 h-10 text-sm" onClick={onCancel} data-testid="button-bulk-cancel">
               취소
             </Button>
             <Button
-              className="flex-1 h-9 text-sm"
+              className="flex-1 h-10 text-sm"
               disabled={saving}
               onClick={async () => {
                 setSaving(true);
