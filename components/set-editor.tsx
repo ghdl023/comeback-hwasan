@@ -137,9 +137,19 @@ export function SetEditor({
     });
   }, []);
 
-  const startRestTimer = useCallback((setIdx: number, restMmss: number | null) => {
+  const startRestTimer = useCallback((setIdx: number, restMmss: number | null, completeOldIdx?: number) => {
     if (timerRef.current) clearInterval(timerRef.current);
     timerRef.current = null;
+    if (completeOldIdx !== undefined) {
+      setRestingSetIdx(null);
+      setLocalSets((prev) => {
+        const updated = prev.map((p, i) => (i === completeOldIdx ? { ...p, completed: true } : p));
+        if (!updated[completeOldIdx].isNew) {
+          updateWorkoutSet(updated[completeOldIdx].id, { completed: true }).catch(console.error);
+        }
+        return updated;
+      });
+    }
     const totalSec = mmssToSeconds(restMmss);
     setRestingSetIdx(setIdx);
     if (totalSec <= 0) {
@@ -194,10 +204,7 @@ export function SetEditor({
     } else if (restingSetIdx === idx) {
       stopTimer(idx);
     } else {
-      if (restingSetIdx !== null) {
-        completeSet(restingSetIdx);
-      }
-      startRestTimer(idx, s.rest_seconds);
+      startRestTimer(idx, s.rest_seconds, restingSetIdx !== null ? restingSetIdx : undefined);
     }
   };
 
