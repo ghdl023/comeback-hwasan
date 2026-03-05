@@ -196,7 +196,7 @@ export function SetEditor({
         return updated;
       });
     } else if (restingSetIdx === idx) {
-      return;
+      stopTimer(idx);
     } else {
       startRestTimer(idx, s.rest_seconds);
     }
