@@ -185,16 +185,12 @@ export function SetEditor({
     }, 600);
   }, []);
 
+  const [confirmResetIdx, setConfirmResetIdx] = useState<number | null>(null);
+
   const handleStatusClick = (idx: number) => {
     const s = localSets[idx];
     if (s.completed) {
-      setLocalSets((prev) => {
-        const updated = prev.map((p, i) => (i === idx ? { ...p, completed: false } : p));
-        if (!updated[idx].isNew) {
-          updateWorkoutSet(updated[idx].id, { completed: false }).catch(console.error);
-        }
-        return updated;
-      });
+      setConfirmResetIdx(idx);
     } else if (restingSetIdx === idx) {
       stopTimer(idx);
     } else {
@@ -203,6 +199,19 @@ export function SetEditor({
       }
       startRestTimer(idx, s.rest_seconds);
     }
+  };
+
+  const handleConfirmReset = () => {
+    if (confirmResetIdx === null) return;
+    const idx = confirmResetIdx;
+    setLocalSets((prev) => {
+      const updated = prev.map((p, i) => (i === idx ? { ...p, completed: false } : p));
+      if (!updated[idx].isNew) {
+        updateWorkoutSet(updated[idx].id, { completed: false }).catch(console.error);
+      }
+      return updated;
+    });
+    setConfirmResetIdx(null);
   };
 
   const getSetStatus = (idx: number): "pending" | "resting" | "done" => {
@@ -506,6 +515,26 @@ export function SetEditor({
           })()}
         </div>
       </div>
+
+      {confirmResetIdx !== null && (
+        <div className="fixed inset-0 z-[60] bg-black/50 flex items-center justify-center" onClick={() => setConfirmResetIdx(null)}>
+          <div
+            className="bg-background rounded-xl p-5 mx-6 max-w-sm w-full shadow-lg"
+            onClick={(e) => e.stopPropagation()}
+            data-testid="confirm-reset-dialog"
+          >
+            <p className="text-sm font-medium text-center mb-4">이미 완료된 세트입니다.<br />체크를 해제하시겠습니까?</p>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" className="flex-1 h-10 text-sm" onClick={() => setConfirmResetIdx(null)} data-testid="button-confirm-cancel">
+                취소
+              </Button>
+              <Button className="flex-1 h-10 text-sm" onClick={handleConfirmReset} data-testid="button-confirm-ok">
+                확인
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {bulkEditOpen && (
         <BulkEditPopup
