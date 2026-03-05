@@ -26,6 +26,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { AppShell } from "@/components/app-shell";
 import { ExerciseSelector } from "@/components/exercise-selector";
+import { SetEditor } from "@/components/set-editor";
 import {
   Loader2,
   Settings,
@@ -204,6 +205,8 @@ export default function DashboardPage() {
         set_number: idx + 1,
         reps: null,
         weight: null,
+        rest_seconds: null,
+        completed: false,
       }));
       await addWorkoutSets(setsToCreate);
       const [w, s, e] = await Promise.all([
@@ -478,6 +481,30 @@ export default function DashboardPage() {
     );
   }
 
+  if (setEditExerciseId) {
+    const editExercise = exerciseMap.get(setEditExerciseId);
+    const editSets = daySets.filter((s) => s.exercise_id === setEditExerciseId);
+    const editWorkoutId = dayWorkouts[0]?.id || "";
+    return (
+      <SetEditor
+        exerciseId={setEditExerciseId}
+        exercise={editExercise}
+        sets={editSets}
+        date={selectedDateStr}
+        workoutId={editWorkoutId}
+        onClose={() => setSetEditExerciseId(null)}
+        onSetsChanged={(updatedSets) => {
+          setSets((prev) => {
+            const otherSets = prev.filter(
+              (s) => !(s.exercise_id === setEditExerciseId && dayWorkouts.some((w) => w.id === s.workout_id))
+            );
+            return [...otherSets, ...updatedSets];
+          });
+        }}
+      />
+    );
+  }
+
   if (memoAddOpen || editingMemo) {
     const isEditing = !!editingMemo;
     const handleClose = () => {
@@ -706,7 +733,7 @@ export default function DashboardPage() {
                             <span className="text-xs">
                               {s.reps ?? "-"}회 / {s.weight ? `${Number(s.weight)}kg` : "-"}
                             </span>
-                            <span className="text-xs text-muted-foreground">-</span>
+                            <span className="text-xs text-muted-foreground">{s.rest_seconds ? `${s.rest_seconds}초` : "-"}</span>
                           </div>
                         ))}
                       </div>

@@ -34,6 +34,8 @@ export interface WorkoutSet {
   set_number: number;
   reps: number | null;
   weight: number | null;
+  rest_seconds: number | null;
+  completed: boolean;
   created_at: string;
 }
 

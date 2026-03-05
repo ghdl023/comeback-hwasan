@@ -248,6 +248,29 @@ export async function getWorkoutSetsByUser(userId: string): Promise<WorkoutSet[]
   return allSets;
 }
 
+export async function updateWorkoutSet(
+  id: string,
+  data: Partial<Pick<WorkoutSet, "weight" | "reps" | "rest_seconds" | "completed" | "set_number">>
+): Promise<void> {
+  const ref = doc(db, "workout_sets", id);
+  await updateDoc(ref, data);
+}
+
+export async function deleteWorkoutSet(id: string): Promise<void> {
+  await deleteDoc(doc(db, "workout_sets", id));
+}
+
+export async function addSingleWorkoutSet(
+  data: Omit<WorkoutSet, "id" | "created_at">
+): Promise<WorkoutSet> {
+  const now = new Date().toISOString();
+  const docRef = await addDoc(collection(db, "workout_sets"), {
+    ...data,
+    created_at: now,
+  });
+  return { id: docRef.id, ...data, created_at: now };
+}
+
 export async function addWorkoutSets(
   sets: Omit<WorkoutSet, "id" | "created_at">[]
 ): Promise<void> {
