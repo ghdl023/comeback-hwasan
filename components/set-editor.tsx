@@ -214,21 +214,21 @@ export function SetEditor({
 
   return (
     <div className="fixed inset-0 z-50 bg-background flex flex-col" data-testid="set-editor">
-      <div className="flex items-center gap-3 px-4 py-2.5 border-b shrink-0 safe-area-top">
-        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleClose} data-testid="button-set-editor-back">
+      <div className="flex items-center gap-3 px-4 py-3 border-b shrink-0 safe-area-top">
+        <Button variant="ghost" size="icon" className="h-9 w-9" onClick={handleClose} data-testid="button-set-editor-back">
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <h1 className="text-base font-bold">{date}</h1>
+        <h1 className="text-lg font-bold">{date}</h1>
       </div>
 
       <div className="flex-1 flex flex-col overflow-hidden">
         <div className="px-4 py-3 border-b">
           <div className="flex items-center gap-2">
-            <Dumbbell className="h-4 w-4 text-primary" />
-            <h2 className="text-base font-bold">{exercise?.name || "운동"}</h2>
+            <Dumbbell className="h-5 w-5 text-primary" />
+            <h2 className="text-lg font-bold">{exercise?.name || "운동"}</h2>
           </div>
           {exercise?.muscle_group && (
-            <Badge variant="outline" className="text-[10px] h-4 px-1.5 mt-1">
+            <Badge variant="outline" className="text-xs h-5 px-2 mt-1">
               {MUSCLE_GROUP_LABELS[exercise.muscle_group as MuscleGroup] || exercise.muscle_group}
             </Badge>
           )}
@@ -241,20 +241,20 @@ export function SetEditor({
               const isDeleteReady = deleteConfirm === s.id;
               return (
                 <div key={s.id || idx} className="border rounded-lg overflow-hidden" data-testid={`set-row-${idx}`}>
-                  <div className="flex items-center gap-1.5 px-3 py-2.5">
+                  <div className="flex items-center gap-2 px-3 py-3">
                     <button
-                      className={`w-6 h-6 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${
+                      className={`w-7 h-7 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${
                         s.completed ? "bg-primary border-primary" : "border-muted-foreground/30"
                       }`}
                       onClick={() => handleToggleComplete(idx)}
                       data-testid={`button-complete-${idx}`}
                     >
-                      {s.completed && <Check className="h-3 w-3 text-primary-foreground" />}
+                      {s.completed && <Check className="h-3.5 w-3.5 text-primary-foreground" />}
                     </button>
 
-                    <span className="text-xs font-bold text-muted-foreground w-6 text-center shrink-0">{s.set_number}</span>
+                    <span className="text-sm font-bold text-muted-foreground w-6 text-center shrink-0">{s.set_number}</span>
 
-                    <div className="flex-1 flex items-center gap-3 text-xs">
+                    <div className="flex-1 flex items-center gap-3 text-sm">
                       <span className="text-muted-foreground">
                         <span className="font-medium text-foreground">{s.weight ?? "-"}</span>kg
                       </span>
@@ -269,32 +269,32 @@ export function SetEditor({
                     <Button
                       variant="ghost"
                       size="icon"
-                      className={`h-7 w-7 shrink-0 ${isDeleteReady ? "text-destructive bg-destructive/10" : "text-muted-foreground"}`}
+                      className={`h-8 w-8 shrink-0 ${isDeleteReady ? "text-destructive bg-destructive/10" : "text-muted-foreground"}`}
                       onClick={() => handleDeleteSet(idx)}
                       data-testid={`button-delete-set-${idx}`}
                     >
-                      <Trash2 className="h-3.5 w-3.5" />
+                      <Trash2 className="h-4 w-4" />
                     </Button>
 
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-7 w-7 shrink-0 text-muted-foreground"
+                      className="h-8 w-8 shrink-0 text-muted-foreground"
                       onClick={() => setExpandedSet(isExpanded ? null : idx)}
                       data-testid={`button-expand-set-${idx}`}
                     >
-                      {isExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                      {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                     </Button>
                   </div>
 
                   <div
                     className="overflow-hidden transition-all duration-200 ease-in-out"
                     style={{
-                      maxHeight: isExpanded ? "300px" : "0px",
+                      maxHeight: isExpanded ? "350px" : "0px",
                       opacity: isExpanded ? 1 : 0,
                     }}
                   >
-                    <div className="px-3 pb-3 pt-2 border-t bg-muted/20 space-y-3">
+                    <div className="px-3 pb-3 pt-2 border-t bg-muted/20 space-y-3.5">
                       <SetFieldRow
                         label="무게 (kg)"
                         value={s.weight}
@@ -324,14 +324,14 @@ export function SetEditor({
 
         <div className="px-4 py-3 border-t shrink-0 safe-area-bottom">
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" className="h-8 text-xs flex-1" onClick={() => setBulkEditOpen(true)} data-testid="button-bulk-edit">
+            <Button variant="outline" size="sm" className="h-9 text-sm flex-1" onClick={() => setBulkEditOpen(true)} data-testid="button-bulk-edit">
               일괄수정
             </Button>
-            <Button variant="outline" size="sm" className="h-8 text-xs flex-1 gap-1" data-testid="button-load-sets" disabled>
-              <Copy className="h-3 w-3" /> 세트 불러오기
+            <Button variant="outline" size="sm" className="h-9 text-sm flex-1 gap-1" data-testid="button-load-sets" disabled>
+              <Copy className="h-3.5 w-3.5" /> 세트 불러오기
             </Button>
-            <Button size="sm" className="h-8 text-xs flex-1 gap-1" onClick={handleAddSet} disabled={saving} data-testid="button-add-set">
-              <Plus className="h-3 w-3" /> 세트 추가
+            <Button size="sm" className="h-9 text-sm flex-1 gap-1" onClick={handleAddSet} disabled={saving} data-testid="button-add-set">
+              <Plus className="h-3.5 w-3.5" /> 세트 추가
             </Button>
           </div>
         </div>
@@ -386,21 +386,21 @@ function SetFieldRow({
 }) {
   return (
     <div className="flex items-center gap-2">
-      <span className="text-xs text-muted-foreground w-16 shrink-0">{label}</span>
-      <div className="flex-1 flex items-center gap-1.5">
+      <span className="text-sm text-muted-foreground w-20 shrink-0">{label}</span>
+      <div className="flex-1 flex items-center gap-2">
         <Input
           type="number"
-          className="h-7 text-center text-sm px-1 flex-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+          className="h-9 text-center text-sm w-20 shrink-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
           value={value ?? ""}
           onChange={(e) => {
             const v = e.target.value;
             onChange(v === "" ? null : Number(v));
           }}
         />
-        <Button size="sm" className="h-7 px-2 shrink-0 text-xs bg-blue-500/15 text-blue-600 hover:bg-blue-500/25 border-0" variant="outline" onClick={() => onAdjust(-step)}>
+        <Button size="sm" className="h-9 px-3 shrink-0 text-sm font-medium bg-blue-500/15 text-blue-600 hover:bg-blue-500/25 border-0" variant="outline" onClick={() => onAdjust(-step)}>
           -{step}
         </Button>
-        <Button size="sm" className="h-7 px-2 shrink-0 text-xs bg-red-500/15 text-red-600 hover:bg-red-500/25 border-0" variant="outline" onClick={() => onAdjust(step)}>
+        <Button size="sm" className="h-9 px-3 shrink-0 text-sm font-medium bg-red-500/15 text-red-600 hover:bg-red-500/25 border-0" variant="outline" onClick={() => onAdjust(step)}>
           +{step}
         </Button>
       </div>
@@ -419,12 +419,12 @@ function RestFieldRow({
 }) {
   return (
     <div className="flex items-center gap-2">
-      <span className="text-xs text-muted-foreground w-16 shrink-0">휴식</span>
-      <div className="flex-1 flex items-center gap-1.5">
+      <span className="text-sm text-muted-foreground w-20 shrink-0">휴식</span>
+      <div className="flex-1 flex items-center gap-2">
         <Input
           type="text"
           inputMode="numeric"
-          className="h-7 text-center text-sm px-1 flex-1"
+          className="h-9 text-center text-sm w-20 shrink-0"
           placeholder="00:00"
           value={formatRestDisplay(value)}
           onChange={(e) => {
@@ -436,10 +436,10 @@ function RestFieldRow({
             onChange(Number(raw));
           }}
         />
-        <Button size="sm" className="h-7 px-2 shrink-0 text-xs bg-blue-500/15 text-blue-600 hover:bg-blue-500/25 border-0" variant="outline" onClick={() => onAdjust(-30)}>
+        <Button size="sm" className="h-9 px-3 shrink-0 text-sm font-medium bg-blue-500/15 text-blue-600 hover:bg-blue-500/25 border-0" variant="outline" onClick={() => onAdjust(-30)}>
           -30
         </Button>
-        <Button size="sm" className="h-7 px-2 shrink-0 text-xs bg-red-500/15 text-red-600 hover:bg-red-500/25 border-0" variant="outline" onClick={() => onAdjust(30)}>
+        <Button size="sm" className="h-9 px-3 shrink-0 text-sm font-medium bg-red-500/15 text-red-600 hover:bg-red-500/25 border-0" variant="outline" onClick={() => onAdjust(30)}>
           +30
         </Button>
       </div>
