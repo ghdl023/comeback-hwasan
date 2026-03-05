@@ -387,7 +387,7 @@ function SetFieldRow({
   return (
     <div className="flex items-center gap-2">
       <span className="text-sm text-muted-foreground w-20 shrink-0">{label}</span>
-      <div className="flex-1 flex items-center gap-2">
+      <div className="flex-1 flex items-center justify-end gap-2">
         <Input
           type="number"
           className="h-9 text-center text-sm w-20 shrink-0 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
@@ -420,7 +420,7 @@ function RestFieldRow({
   return (
     <div className="flex items-center gap-2">
       <span className="text-sm text-muted-foreground w-20 shrink-0">휴식</span>
-      <div className="flex-1 flex items-center gap-2">
+      <div className="flex-1 flex items-center justify-end gap-2">
         <Input
           type="text"
           inputMode="numeric"
