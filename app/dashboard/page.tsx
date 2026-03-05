@@ -13,6 +13,7 @@ import {
   deleteMemo,
   addWorkout,
   addWorkoutSets,
+  deleteExerciseSetsFromWorkouts,
 } from "@/lib/firebase/firestore";
 import type { Workout, WorkoutSet, Exercise, MuscleGroup, Memo } from "@/lib/types";
 import { MUSCLE_GROUP_LABELS } from "@/lib/types";
@@ -42,6 +43,7 @@ import {
   Save,
   StickyNote,
   Check,
+  Trash2,
 } from "lucide-react";
 
 type DetailTab = "exercises" | "body" | "memo";
@@ -95,6 +97,8 @@ export default function DashboardPage() {
   const [memoSaving, setMemoSaving] = useState(false);
   const [editingMemo, setEditingMemo] = useState<Memo | null>(null);
   const [exerciseSelectorOpen, setExerciseSelectorOpen] = useState(false);
+  const [expandedExercises, setExpandedExercises] = useState<Set<string>>(new Set());
+  const [setEditExerciseId, setSetEditExerciseId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -212,6 +216,26 @@ export default function DashboardPage() {
       setExercises(e);
     } catch (err) {
       console.error("Workout create error:", err);
+    }
+  };
+
+  const handleToggleExerciseExpand = (exerciseId: string) => {
+    setExpandedExercises((prev) => {
+      const next = new Set(prev);
+      if (next.has(exerciseId)) next.delete(exerciseId);
+      else next.add(exerciseId);
+      return next;
+    });
+  };
+
+  const handleDeleteExercise = async (exerciseId: string) => {
+    if (!user) return;
+    const wIds = dayWorkouts.map((w) => w.id);
+    try {
+      await deleteExerciseSetsFromWorkouts(wIds, exerciseId);
+      setSets((prev) => prev.filter((s) => !(s.exercise_id === exerciseId && wIds.includes(s.workout_id))));
+    } catch (err) {
+      console.error("Delete exercise sets error:", err);
     }
   };
 
@@ -626,12 +650,16 @@ export default function DashboardPage() {
             <div className="space-y-3">
               {Object.entries(groupedByExercise).map(([exerciseId, exSets]) => {
                 const exercise = exerciseMap.get(exerciseId);
-                const exVolume = exSets.reduce((sum, s) => sum + (s.weight ? Number(s.weight) : 0) * (s.reps ?? 0), 0);
+                const isExpanded = expandedExercises.has(exerciseId);
                 return (
                   <Card key={exerciseId} className="overflow-hidden" data-testid={`card-exercise-${exerciseId}`}>
-                    <div className="flex items-center gap-3 px-3.5 py-2 bg-muted/30 border-b">
-                      <div className="flex items-center justify-center w-6 h-6 rounded-md bg-primary/10 shrink-0">
-                        <Dumbbell className="h-3 w-3 text-primary" />
+                    <div
+                      className="flex items-center gap-3 px-3.5 py-2.5 cursor-pointer active:bg-muted/30 transition-colors"
+                      onClick={() => setSetEditExerciseId(exerciseId)}
+                      data-testid={`button-exercise-card-${exerciseId}`}
+                    >
+                      <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-primary/10 shrink-0">
+                        <Dumbbell className="h-3.5 w-3.5 text-primary" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">{exercise?.name || "알 수 없는 운동"}</p>
@@ -641,24 +669,48 @@ export default function DashboardPage() {
                               {MUSCLE_GROUP_LABELS[exercise.muscle_group as MuscleGroup] || exercise.muscle_group}
                             </Badge>
                           )}
-                          <span className="text-[10px] text-muted-foreground">
-                            {exSets.length}세트 · {exVolume > 0 ? `${exVolume.toLocaleString()}kg` : "-"}
-                          </span>
+                          <span className="text-[10px] text-muted-foreground">{exSets.length}세트</span>
                         </div>
                       </div>
                     </div>
-                    <div className="px-3.5 py-1.5">
-                      <div className="grid grid-cols-3 gap-0 text-[10px] font-medium text-muted-foreground uppercase tracking-wider pb-1">
-                        <span>세트</span><span>횟수</span><span>무게 (kg)</span>
-                      </div>
-                      {exSets.map((s) => (
-                        <div key={s.id} className="grid grid-cols-3 gap-0 text-sm py-1 border-t border-muted/40" data-testid={`row-set-${s.id}`}>
-                          <span className="font-mono text-xs text-muted-foreground">{s.set_number}</span>
-                          <span className="text-sm">{s.reps ?? "-"}</span>
-                          <span className="text-sm">{s.weight ? Number(s.weight) : "-"}</span>
-                        </div>
-                      ))}
+                    <div className="flex items-center justify-between px-3.5 py-1.5 border-t border-muted/40">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-xs gap-1 text-muted-foreground"
+                        onClick={(e) => { e.stopPropagation(); handleToggleExerciseExpand(exerciseId); }}
+                        data-testid={`button-toggle-expand-${exerciseId}`}
+                      >
+                        {isExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                        {isExpanded ? "접기" : "펼치기"}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 text-xs gap-1 text-destructive hover:text-destructive"
+                        onClick={(e) => { e.stopPropagation(); handleDeleteExercise(exerciseId); }}
+                        data-testid={`button-delete-exercise-${exerciseId}`}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        삭제
+                      </Button>
                     </div>
+                    {isExpanded && (
+                      <div className="px-3.5 py-1.5 border-t border-muted/40 bg-muted/20">
+                        <div className="grid grid-cols-3 gap-0 text-[10px] font-medium text-muted-foreground uppercase tracking-wider pb-1">
+                          <span>세트</span><span>횟수 / 무게</span><span>휴식</span>
+                        </div>
+                        {exSets.map((s) => (
+                          <div key={s.id} className="grid grid-cols-3 gap-0 text-sm py-1 border-t border-muted/30" data-testid={`row-set-${s.id}`}>
+                            <span className="font-mono text-xs text-muted-foreground">{s.set_number}</span>
+                            <span className="text-xs">
+                              {s.reps ?? "-"}회 / {s.weight ? `${Number(s.weight)}kg` : "-"}
+                            </span>
+                            <span className="text-xs text-muted-foreground">-</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </Card>
                 );
               })}

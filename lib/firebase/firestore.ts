@@ -187,6 +187,24 @@ export async function addWorkout(
   return { id: docRef.id, ...data, created_at: now } as Workout;
 }
 
+export async function deleteExerciseSetsFromWorkouts(
+  workoutIds: string[],
+  exerciseId: string
+): Promise<void> {
+  if (workoutIds.length === 0) return;
+  const batch = writeBatch(db);
+  for (const wId of workoutIds) {
+    const q = query(
+      collection(db, "workout_sets"),
+      where("workout_id", "==", wId),
+      where("exercise_id", "==", exerciseId)
+    );
+    const snap = await getDocs(q);
+    snap.docs.forEach((d) => batch.delete(d.ref));
+  }
+  await batch.commit();
+}
+
 export async function deleteWorkout(id: string): Promise<void> {
   const setsQ = query(
     collection(db, "workout_sets"),
