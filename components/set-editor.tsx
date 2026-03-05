@@ -256,7 +256,7 @@ export function SetEditor({
                         <span className="font-medium text-foreground">{s.reps ?? "-"}</span>회
                       </span>
                       <span className="text-muted-foreground">
-                        <span className="font-medium text-foreground">{s.rest_seconds ?? "-"}</span>초
+                        <span className="font-medium text-foreground">{formatRestLabel(s.rest_seconds)}</span>
                       </span>
                     </div>
 
@@ -297,10 +297,8 @@ export function SetEditor({
                         onChange={(v) => handleFieldChange(idx, "reps", v)}
                         onAdjust={(d) => handleFieldAdjust(idx, "reps", d)}
                       />
-                      <SetFieldRow
-                        label="휴식 (초)"
+                      <RestFieldRow
                         value={s.rest_seconds}
-                        step={30}
                         onChange={(v) => handleFieldChange(idx, "rest_seconds", v)}
                         onAdjust={(d) => handleFieldAdjust(idx, "rest_seconds", d)}
                       />
@@ -366,6 +364,20 @@ export function SetEditor({
   );
 }
 
+function formatRestDisplay(seconds: number | null): string {
+  if (seconds === null || seconds === 0) return "";
+  const m = Math.floor(seconds / 100);
+  const s = seconds % 100;
+  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
+
+function formatRestLabel(seconds: number | null): string {
+  if (seconds === null) return "-";
+  const m = Math.floor(seconds / 100);
+  const s = seconds % 100;
+  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
+
 function SetFieldRow({
   label,
   value,
@@ -383,8 +395,8 @@ function SetFieldRow({
     <div className="flex items-center gap-2">
       <span className="text-xs text-muted-foreground w-16 shrink-0">{label}</span>
       <div className="flex-1 flex items-center gap-1.5">
-        <Button variant="outline" size="icon" className="h-7 w-7 shrink-0" onClick={() => onAdjust(-step)}>
-          <Minus className="h-3 w-3" />
+        <Button variant="outline" size="sm" className="h-7 px-2 shrink-0 text-xs" onClick={() => onAdjust(-step)}>
+          -{step}
         </Button>
         <Input
           type="number"
@@ -395,8 +407,48 @@ function SetFieldRow({
             onChange(v === "" ? null : Number(v));
           }}
         />
-        <Button variant="outline" size="icon" className="h-7 w-7 shrink-0" onClick={() => onAdjust(step)}>
-          <Plus className="h-3 w-3" />
+        <Button variant="outline" size="sm" className="h-7 px-2 shrink-0 text-xs" onClick={() => onAdjust(step)}>
+          +{step}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function RestFieldRow({
+  value,
+  onChange,
+  onAdjust,
+}: {
+  value: number | null;
+  onChange: (v: number | null) => void;
+  onAdjust: (delta: number) => void;
+}) {
+  const displayVal = formatRestDisplay(value);
+  return (
+    <div className="flex items-center gap-2">
+      <span className="text-xs text-muted-foreground w-16 shrink-0">휴식</span>
+      <div className="flex-1 flex items-center gap-1.5">
+        <Button variant="outline" size="sm" className="h-7 px-2 shrink-0 text-xs" onClick={() => onAdjust(-30)}>
+          -30
+        </Button>
+        <Input
+          type="text"
+          inputMode="numeric"
+          className="h-7 text-center text-sm px-1"
+          placeholder="00:00"
+          value={displayVal}
+          onChange={(e) => {
+            const raw = e.target.value.replace(/\D/g, "");
+            if (raw === "") {
+              onChange(null);
+              return;
+            }
+            onChange(Number(raw));
+          }}
+        />
+        <Button variant="outline" size="sm" className="h-7 px-2 shrink-0 text-xs" onClick={() => onAdjust(30)}>
+          +30
         </Button>
       </div>
     </div>
@@ -474,7 +526,7 @@ function BulkEditPopup({
               </button>
               <span className="text-xs font-bold text-muted-foreground w-5">{s.set_number}</span>
               <span className="text-xs flex-1">
-                {s.weight ?? "-"}kg · {s.reps ?? "-"}회 · {s.rest_seconds ?? "-"}초
+                {s.weight ?? "-"}kg · {s.reps ?? "-"}회 · {formatRestLabel(s.rest_seconds)}
               </span>
             </div>
           ))}

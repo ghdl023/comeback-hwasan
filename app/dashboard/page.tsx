@@ -733,7 +733,7 @@ export default function DashboardPage() {
                             <span className="text-xs">
                               {s.reps ?? "-"}회 / {s.weight ? `${Number(s.weight)}kg` : "-"}
                             </span>
-                            <span className="text-xs text-muted-foreground">{s.rest_seconds ? `${s.rest_seconds}초` : "-"}</span>
+                            <span className="text-xs text-muted-foreground">{s.rest_seconds ? `${String(Math.floor(s.rest_seconds / 100)).padStart(2, "0")}:${String(s.rest_seconds % 100).padStart(2, "0")}` : "-"}</span>
                           </div>
                         ))}
                       </div>
