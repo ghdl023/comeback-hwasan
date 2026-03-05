@@ -68,7 +68,9 @@ interface DayInfo {
   setCount: number;
   workoutCount: number;
   muscleGroups: { name: string; count: number }[];
-  hasBodyRecord: boolean;
+  bodyWeight: number | null;
+  bodySkeletalMuscle: number | null;
+  bodyFat: number | null;
   memoText: string | null;
 }
 
@@ -381,7 +383,7 @@ export default function DashboardPage() {
     workouts.forEach((w) => {
       const d = new Date(w.performed_at);
       const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-      const existing = map.get(key) || { duration: 0, setCount: 0, workoutCount: 0, muscleGroups: [], hasBodyRecord: false, memoText: null };
+      const existing = map.get(key) || { duration: 0, setCount: 0, workoutCount: 0, muscleGroups: [], bodyWeight: null, bodySkeletalMuscle: null, bodyFat: null, memoText: null };
       existing.duration += w.duration_minutes || 0;
       existing.workoutCount += 1;
       const wSets = setsByWorkoutId.get(w.id) || [];
@@ -403,14 +405,16 @@ export default function DashboardPage() {
       const [y, m, d] = dateStr.split("-").map(Number);
       const key = `${y}-${m - 1}-${d}`;
       if (!map.has(key)) {
-        map.set(key, { duration: 0, setCount: 0, workoutCount: 0, muscleGroups: [], hasBodyRecord: false, memoText: null });
+        map.set(key, { duration: 0, setCount: 0, workoutCount: 0, muscleGroups: [], bodyWeight: null, bodySkeletalMuscle: null, bodyFat: null, memoText: null });
       }
       return map.get(key)!;
     };
 
     monthlyBodyRecords.forEach((b) => {
       const info = addNonWorkoutInfo(b.date);
-      info.hasBodyRecord = true;
+      info.bodyWeight = b.weight;
+      info.bodySkeletalMuscle = b.skeletal_muscle;
+      info.bodyFat = b.body_fat;
     });
 
     monthlyMemos.forEach((m) => {
@@ -1017,16 +1021,26 @@ export default function DashboardPage() {
                       </div>
                       {info && isCurrentMonth && (
                         <div className="w-full mt-0.5 space-y-px overflow-hidden">
+                          {info.bodyWeight != null && (
+                            <div className="bg-emerald-100 dark:bg-emerald-900/30 rounded-sm px-0.5 py-px">
+                              <p className="text-[8px] text-emerald-700 dark:text-emerald-300 font-medium truncate text-left leading-tight">체중 {info.bodyWeight}kg</p>
+                            </div>
+                          )}
+                          {info.bodySkeletalMuscle != null && (
+                            <div className="bg-emerald-100 dark:bg-emerald-900/30 rounded-sm px-0.5 py-px">
+                              <p className="text-[8px] text-emerald-700 dark:text-emerald-300 font-medium truncate text-left leading-tight">골격근 {info.bodySkeletalMuscle}kg</p>
+                            </div>
+                          )}
+                          {info.bodyFat != null && (
+                            <div className="bg-emerald-100 dark:bg-emerald-900/30 rounded-sm px-0.5 py-px">
+                              <p className="text-[8px] text-emerald-700 dark:text-emerald-300 font-medium truncate text-left leading-tight">체지방 {info.bodyFat}%</p>
+                            </div>
+                          )}
                           {info.muscleGroups.map((mg) => (
                             <div key={mg.name} className="bg-sky-100 dark:bg-sky-900/30 rounded-sm px-0.5 py-px">
                               <p className="text-[8px] text-sky-700 dark:text-sky-300 font-medium truncate text-left leading-tight">{mg.name} {mg.count}</p>
                             </div>
                           ))}
-                          {info.hasBodyRecord && (
-                            <div className="bg-emerald-100 dark:bg-emerald-900/30 rounded-sm px-0.5 py-px">
-                              <p className="text-[8px] text-emerald-700 dark:text-emerald-300 font-medium truncate text-left leading-tight">신체</p>
-                            </div>
-                          )}
                           {info.memoText && (
                             <div className="bg-yellow-100 dark:bg-yellow-900/30 rounded-sm px-0.5 py-px">
                               <p className="text-[8px] text-yellow-800 dark:text-yellow-300 truncate text-left leading-tight">{info.memoText}</p>
