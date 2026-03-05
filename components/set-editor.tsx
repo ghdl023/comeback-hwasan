@@ -222,8 +222,8 @@ export function SetEditor({
   };
 
   const getSetStatus = (idx: number): "pending" | "resting" | "done" => {
-    if (localSets[idx]?.completed) return "done";
     if (effectiveRestingSetIdx === idx) return "resting";
+    if (localSets[idx]?.completed) return "done";
     return "pending";
   };
 
