@@ -274,9 +274,9 @@ export function SetEditor({
         workout_id: workoutId,
         exercise_id: exerciseId,
         set_number: newSetNumber,
-        weight: lastSet?.weight ?? null,
-        reps: lastSet?.reps ?? null,
-        rest_seconds: lastSet?.rest_seconds ?? null,
+        weight: lastSet?.weight ?? 10,
+        reps: lastSet?.reps ?? 15,
+        rest_seconds: lastSet?.rest_seconds ?? 130,
         completed: false,
       });
       setLocalSets((prev) => [
@@ -284,9 +284,9 @@ export function SetEditor({
         {
           id: created.id,
           set_number: newSetNumber,
-          weight: lastSet?.weight ?? null,
-          reps: lastSet?.reps ?? null,
-          rest_seconds: lastSet?.rest_seconds ?? null,
+          weight: lastSet?.weight ?? 10,
+          reps: lastSet?.reps ?? 15,
+          rest_seconds: lastSet?.rest_seconds ?? 130,
           completed: false,
           workout_id: workoutId,
           exercise_id: exerciseId,

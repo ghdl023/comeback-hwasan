@@ -203,9 +203,9 @@ export default function DashboardPage() {
         workout_id: workout.id,
         exercise_id: ex.id,
         set_number: idx + 1,
-        reps: null,
-        weight: null,
-        rest_seconds: null,
+        reps: 15,
+        weight: 10,
+        rest_seconds: 130,
         completed: false,
       }));
       await addWorkoutSets(setsToCreate);
