@@ -88,7 +88,7 @@ export function RestTimerProvider({ children }: { children: ReactNode }) {
         if (next <= 0) {
           if (timerRef.current) clearInterval(timerRef.current);
           timerRef.current = null;
-          completeSetGlobal(prev.setIdx);
+          setTimeout(() => completeSetGlobal(prev.setIdx), 0);
           return { mode: "next", nextSetIdx: prev.setIdx + 1 };
         }
         return { ...prev, remainSec: next };
