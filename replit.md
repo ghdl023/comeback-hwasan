@@ -91,6 +91,7 @@ middleware.ts           - Next.js middleware (passthrough — auth is client-sid
 - All UI text is in Korean (한국어)
 - Navigation via `AppShell` (hamburger header) + `SidePanel` (slide-out drawer)
 - Safe area insets handled for iOS notch devices
+- Rest timer: global context (`RestTimerProvider` in `rest-timer-context.tsx`) persists timer across views; `FloatingTimer` shows circular progress button when away from set editor; clicking navigates back to the exercise
 - Dashboard detail panel: expandable bottom panel with 3 tabs (운동 목록, 신체정보, 메모)
   - Expands to full screen height (hides AppShell header), collapses with fast 0.2s animation
   - Header: toggle icon (up/down), date (bold) + "N번째 기록", today/routine buttons — same in both states

@@ -8,6 +8,7 @@ import {
   deleteWorkoutSet,
   addSingleWorkoutSet,
 } from "@/lib/firebase/firestore";
+import { useRestTimer, type TimerState } from "@/components/rest-timer-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -78,11 +79,6 @@ function secondsToMMSS(totalSec: number): string {
   return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
 }
 
-type TimerState =
-  | { mode: "idle" }
-  | { mode: "running"; setIdx: number; totalSec: number; remainSec: number }
-  | { mode: "next"; nextSetIdx: number };
-
 export function SetEditor({
   exerciseId,
   exercise,
@@ -98,9 +94,21 @@ export function SetEditor({
   const [saving, setSaving] = useState(false);
   const [bulkEditOpen, setBulkEditOpen] = useState(false);
   const saveTimers = useRef<Record<string, NodeJS.Timeout>>({});
-  const [timerState, setTimerState] = useState<TimerState>({ mode: "idle" });
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const [restingSetIdx, setRestingSetIdx] = useState<number | null>(null);
+
+  const {
+    timerState,
+    restingSetIdx,
+    startRestTimer: globalStartRestTimer,
+    stopTimer: globalStopTimer,
+    setTimerTarget,
+    setOnCompleteSet,
+    timerTarget,
+    setRestingSetIdx,
+  } = useRestTimer();
+
+  const isTimerForThisExercise = timerTarget?.exerciseId === exerciseId && timerTarget?.workoutId === workoutId;
+  const effectiveTimerState: TimerState = isTimerForThisExercise ? timerState : { mode: "idle" };
+  const effectiveRestingSetIdx = isTimerForThisExercise ? restingSetIdx : null;
 
   useEffect(() => {
     const mapped = sets
@@ -119,65 +127,56 @@ export function SetEditor({
     setLocalSets(mapped);
   }, [sets, exerciseId]);
 
+  const localSetsRef = useRef(localSets);
+  localSetsRef.current = localSets;
+
+  useEffect(() => {
+    if (!isTimerForThisExercise) return;
+    const handler = (idx: number) => {
+      setLocalSets((prev) => {
+        const updated = prev.map((p, i) => (i === idx ? { ...p, completed: true } : p));
+        if (updated[idx] && !updated[idx].isNew) {
+          updateWorkoutSet(updated[idx].id, { completed: true }).catch(console.error);
+        }
+        return updated;
+      });
+    };
+    setOnCompleteSet(handler);
+    return () => {
+      setOnCompleteSet(undefined);
+    };
+  }, [isTimerForThisExercise, setOnCompleteSet]);
+
   useEffect(() => {
     return () => {
       Object.values(saveTimers.current).forEach(clearTimeout);
-      if (timerRef.current) clearInterval(timerRef.current);
     };
   }, []);
 
-  const completeSet = useCallback((idx: number) => {
-    setRestingSetIdx(null);
-    setLocalSets((prev) => {
-      const updated = prev.map((p, i) => (i === idx ? { ...p, completed: true } : p));
-      if (!updated[idx].isNew) {
-        updateWorkoutSet(updated[idx].id, { completed: true }).catch(console.error);
-      }
-      return updated;
-    });
-  }, []);
-
   const startRestTimer = useCallback((setIdx: number, restMmss: number | null, completeOldIdx?: number) => {
-    if (timerRef.current) clearInterval(timerRef.current);
-    timerRef.current = null;
+    setTimerTarget({
+      exerciseId,
+      exerciseName: exercise?.name ?? "",
+      workoutId,
+      date,
+    });
     if (completeOldIdx !== undefined) {
       setRestingSetIdx(null);
       setLocalSets((prev) => {
         const updated = prev.map((p, i) => (i === completeOldIdx ? { ...p, completed: true } : p));
-        if (!updated[completeOldIdx].isNew) {
+        if (updated[completeOldIdx] && !updated[completeOldIdx].isNew) {
           updateWorkoutSet(updated[completeOldIdx].id, { completed: true }).catch(console.error);
         }
         return updated;
       });
     }
-    const totalSec = mmssToSeconds(restMmss);
-    setRestingSetIdx(setIdx);
-    if (totalSec <= 0) {
-      setTimerState({ mode: "idle" });
-      return;
-    }
-    setTimerState({ mode: "running", setIdx, totalSec, remainSec: totalSec });
-    timerRef.current = setInterval(() => {
-      setTimerState((prev) => {
-        if (prev.mode !== "running") return prev;
-        const next = prev.remainSec - 1;
-        if (next <= 0) {
-          if (timerRef.current) clearInterval(timerRef.current);
-          timerRef.current = null;
-          completeSet(prev.setIdx);
-          return { mode: "next", nextSetIdx: prev.setIdx + 1 };
-        }
-        return { ...prev, remainSec: next };
-      });
-    }, 1000);
-  }, [completeSet]);
+    const docId = localSetsRef.current[setIdx]?.id || "";
+    globalStartRestTimer(setIdx, restMmss, docId);
+  }, [exerciseId, exercise?.name, workoutId, date, setTimerTarget, globalStartRestTimer, setRestingSetIdx]);
 
   const stopTimer = useCallback((currentSetIdx: number) => {
-    if (timerRef.current) clearInterval(timerRef.current);
-    timerRef.current = null;
-    completeSet(currentSetIdx);
-    setTimerState({ mode: "next", nextSetIdx: currentSetIdx + 1 });
-  }, [completeSet]);
+    globalStopTimer(currentSetIdx);
+  }, [globalStopTimer]);
 
   const debouncedSave = useCallback((setData: LocalSet) => {
     if (setData.isNew) return;
@@ -201,11 +200,11 @@ export function SetEditor({
     const s = localSets[idx];
     if (s.completed) {
       setConfirmResetIdx(idx);
-    } else if (restingSetIdx === idx) {
+    } else if (effectiveRestingSetIdx === idx) {
       stopTimer(idx);
     } else {
       const restVal = s.rest_seconds ?? localSets.find((ls) => ls.rest_seconds !== null && ls.rest_seconds > 0)?.rest_seconds ?? null;
-      startRestTimer(idx, restVal, restingSetIdx !== null ? restingSetIdx : undefined);
+      startRestTimer(idx, restVal, effectiveRestingSetIdx !== null ? effectiveRestingSetIdx : undefined);
     }
   };
 
@@ -224,7 +223,7 @@ export function SetEditor({
 
   const getSetStatus = (idx: number): "pending" | "resting" | "done" => {
     if (localSets[idx]?.completed) return "done";
-    if (restingSetIdx === idx) return "resting";
+    if (effectiveRestingSetIdx === idx) return "resting";
     return "pending";
   };
 
@@ -453,7 +452,7 @@ export function SetEditor({
         </div>
 
         <div className="shrink-0 safe-area-bottom" data-testid="rest-timer-area">
-          {timerState.mode === "idle" && (
+          {effectiveTimerState.mode === "idle" && (
             <div className="border-t px-4 py-3 bg-muted/10">
               <div className="flex items-center gap-3">
                 <Timer className="h-5 w-5 text-muted-foreground shrink-0" />
@@ -463,24 +462,24 @@ export function SetEditor({
             </div>
           )}
 
-          {timerState.mode === "running" && (
+          {effectiveTimerState.mode === "running" && (
             <div className="relative overflow-hidden border-t" data-testid="rest-timer-running">
               <div
                 className="absolute inset-0 bg-primary/15 transition-[width] duration-1000 ease-linear"
-                style={{ width: `${((timerState.totalSec - timerState.remainSec) / timerState.totalSec) * 100}%` }}
+                style={{ width: `${((effectiveTimerState.totalSec - effectiveTimerState.remainSec) / effectiveTimerState.totalSec) * 100}%` }}
               />
               <div className="relative flex items-center gap-3 px-4 py-3">
                 <Timer className="h-5 w-5 text-primary shrink-0" />
                 <span className="text-sm font-bold text-primary">휴식 타이머</span>
                 <span className="text-lg font-mono font-bold flex-1 text-center">
-                  {secondsToMMSS(timerState.remainSec)}
-                  <span className="text-sm text-muted-foreground font-normal"> / {secondsToMMSS(timerState.totalSec)}</span>
+                  {secondsToMMSS(effectiveTimerState.remainSec)}
+                  <span className="text-sm text-muted-foreground font-normal"> / {secondsToMMSS(effectiveTimerState.totalSec)}</span>
                 </span>
                 <Button
                   variant="ghost"
                   size="icon"
                   className="h-9 w-9 shrink-0 text-destructive hover:bg-destructive/10"
-                  onClick={() => stopTimer(timerState.setIdx)}
+                  onClick={() => stopTimer(effectiveTimerState.setIdx)}
                   data-testid="button-timer-stop"
                 >
                   <Square className="h-4 w-4 fill-current" />
@@ -489,8 +488,8 @@ export function SetEditor({
             </div>
           )}
 
-          {timerState.mode === "next" && (() => {
-            const nextSet = localSets[timerState.nextSetIdx];
+          {effectiveTimerState.mode === "next" && (() => {
+            const nextSet = localSets[effectiveTimerState.nextSetIdx];
             if (!nextSet) return (
               <div className="border-t px-4 py-3 flex items-center justify-center gap-2 bg-muted/30">
                 <Check className="h-4 w-4 text-emerald-500" />
@@ -514,7 +513,7 @@ export function SetEditor({
                     className="h-9 px-4 text-sm gap-1.5"
                     onClick={() => {
                       const rv = nextSet.rest_seconds ?? localSets.find((ls) => ls.rest_seconds !== null && ls.rest_seconds > 0)?.rest_seconds ?? null;
-                      startRestTimer(timerState.nextSetIdx, rv);
+                      startRestTimer(effectiveTimerState.mode === "next" ? effectiveTimerState.nextSetIdx : 0, rv);
                     }}
                     data-testid="button-timer-start-rest"
                   >

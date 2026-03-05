@@ -27,6 +27,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { AppShell } from "@/components/app-shell";
 import { ExerciseSelector } from "@/components/exercise-selector";
 import { SetEditor } from "@/components/set-editor";
+import { FloatingTimer } from "@/components/floating-timer";
+import { useRestTimer } from "@/components/rest-timer-context";
 import {
   Loader2,
   Settings,
@@ -68,6 +70,7 @@ interface DayInfo {
 export default function DashboardPage() {
   const { user } = useAuth();
   const router = useRouter();
+  const { timerState, timerTarget } = useRestTimer();
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [sets, setSets] = useState<WorkoutSet[]>([]);
   const [exercises, setExercises] = useState<Exercise[]>([]);
@@ -562,6 +565,14 @@ export default function DashboardPage() {
             {memoSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : isEditing ? "수정" : "추가"}
           </Button>
         </div>
+        {timerState.mode === "running" && timerTarget && (
+          <FloatingTimer
+            onNavigate={() => {
+              handleClose();
+              if (timerTarget) setSetEditExerciseId(timerTarget.exerciseId);
+            }}
+          />
+        )}
       </div>
     );
   }
@@ -968,6 +979,15 @@ export default function DashboardPage() {
       onClose={() => setExerciseSelectorOpen(false)}
       onSelect={handleExercisesSelected}
     />
+    {!setEditExerciseId && timerState.mode === "running" && timerTarget && (
+      <FloatingTimer
+        onNavigate={() => {
+          if (timerTarget) {
+            setSetEditExerciseId(timerTarget.exerciseId);
+          }
+        }}
+      />
+    )}
     </AppShell>
   );
 }
