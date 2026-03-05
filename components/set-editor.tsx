@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import type { WorkoutSet, Exercise, MuscleGroup } from "@/lib/types";
 import { MUSCLE_GROUP_LABELS } from "@/lib/types";
 import {
@@ -110,6 +110,7 @@ export function SetEditor({
   const effectiveTimerState: TimerState = isTimerForThisExercise ? timerState : { mode: "idle" };
   const effectiveRestingSetIdx = isTimerForThisExercise ? restingSetIdx : null;
 
+  const setsKey = useMemo(() => sets.map((s) => s.id).sort().join(","), [sets]);
   useEffect(() => {
     const mapped = sets
       .filter((s) => s.exercise_id === exerciseId)
@@ -125,7 +126,7 @@ export function SetEditor({
         exercise_id: s.exercise_id,
       }));
     setLocalSets(mapped);
-  }, [sets, exerciseId]);
+  }, [setsKey, exerciseId]);
 
   const localSetsRef = useRef(localSets);
   localSetsRef.current = localSets;
