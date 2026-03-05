@@ -139,13 +139,13 @@ export function SetEditor({
 
   const startRestTimer = useCallback((setIdx: number, restMmss: number | null) => {
     if (timerRef.current) clearInterval(timerRef.current);
+    timerRef.current = null;
     const totalSec = mmssToSeconds(restMmss);
+    setRestingSetIdx(setIdx);
     if (totalSec <= 0) {
-      completeSet(setIdx);
-      setTimerState({ mode: "next", nextSetIdx: setIdx + 1 });
+      setTimerState({ mode: "idle" });
       return;
     }
-    setRestingSetIdx(setIdx);
     setTimerState({ mode: "running", setIdx, totalSec, remainSec: totalSec });
     timerRef.current = setInterval(() => {
       setTimerState((prev) => {
