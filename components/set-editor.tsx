@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import type { WorkoutSet, Exercise, MuscleGroup } from "@/lib/types";
 import { MUSCLE_GROUP_LABELS } from "@/lib/types";
 import {
@@ -17,7 +17,6 @@ import {
   ChevronDown,
   ChevronUp,
   Trash2,
-  Minus,
   Plus,
   Dumbbell,
   Loader2,
@@ -47,6 +46,20 @@ interface LocalSet {
   isNew?: boolean;
 }
 
+function formatRestDisplay(v: number | null): string {
+  if (v === null || v === 0) return "";
+  const m = Math.floor(v / 100);
+  const s = v % 100;
+  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
+
+function formatRestLabel(v: number | null): string {
+  if (v === null) return "-";
+  const m = Math.floor(v / 100);
+  const s = v % 100;
+  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
+
 export function SetEditor({
   exerciseId,
   exercise,
@@ -61,6 +74,7 @@ export function SetEditor({
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [bulkEditOpen, setBulkEditOpen] = useState(false);
+  const saveTimers = useRef<Record<string, NodeJS.Timeout>>({});
 
   useEffect(() => {
     const mapped = sets
@@ -79,65 +93,55 @@ export function SetEditor({
     setLocalSets(mapped);
   }, [sets, exerciseId]);
 
-  const handleToggleComplete = async (idx: number) => {
-    const s = localSets[idx];
-    const newCompleted = !s.completed;
-    setLocalSets((prev) =>
-      prev.map((p, i) => (i === idx ? { ...p, completed: newCompleted } : p))
-    );
-    if (!s.isNew) {
-      await updateWorkoutSet(s.id, { completed: newCompleted }).catch(console.error);
-    }
+  useEffect(() => {
+    return () => {
+      Object.values(saveTimers.current).forEach(clearTimeout);
+    };
+  }, []);
+
+  const debouncedSave = useCallback((setData: LocalSet) => {
+    if (setData.isNew) return;
+    const key = setData.id;
+    if (saveTimers.current[key]) clearTimeout(saveTimers.current[key]);
+    saveTimers.current[key] = setTimeout(() => {
+      updateWorkoutSet(setData.id, {
+        weight: setData.weight,
+        reps: setData.reps,
+        rest_seconds: setData.rest_seconds,
+        completed: setData.completed,
+        set_number: setData.set_number,
+      }).catch(console.error);
+      delete saveTimers.current[key];
+    }, 600);
+  }, []);
+
+  const handleToggleComplete = (idx: number) => {
+    setLocalSets((prev) => {
+      const updated = prev.map((p, i) => (i === idx ? { ...p, completed: !p.completed } : p));
+      debouncedSave(updated[idx]);
+      return updated;
+    });
   };
 
   const handleFieldChange = (idx: number, field: "weight" | "reps" | "rest_seconds", value: number | null) => {
-    setLocalSets((prev) =>
-      prev.map((p, i) => (i === idx ? { ...p, [field]: value } : p))
-    );
+    setLocalSets((prev) => {
+      const updated = prev.map((p, i) => (i === idx ? { ...p, [field]: value } : p));
+      debouncedSave(updated[idx]);
+      return updated;
+    });
   };
 
   const handleFieldAdjust = (idx: number, field: "weight" | "reps" | "rest_seconds", delta: number) => {
-    setLocalSets((prev) =>
-      prev.map((p, i) => {
+    setLocalSets((prev) => {
+      const updated = prev.map((p, i) => {
         if (i !== idx) return p;
         const current = p[field] ?? 0;
         const newVal = Math.max(0, current + delta);
         return { ...p, [field]: newVal };
-      })
-    );
-  };
-
-  const handleSaveSet = async (idx: number) => {
-    const s = localSets[idx];
-    setSaving(true);
-    try {
-      if (s.isNew) {
-        const created = await addSingleWorkoutSet({
-          workout_id: s.workout_id,
-          exercise_id: s.exercise_id,
-          set_number: s.set_number,
-          weight: s.weight,
-          reps: s.reps,
-          rest_seconds: s.rest_seconds,
-          completed: s.completed,
-        });
-        setLocalSets((prev) =>
-          prev.map((p, i) => (i === idx ? { ...p, id: created.id, isNew: false } : p))
-        );
-      } else {
-        await updateWorkoutSet(s.id, {
-          weight: s.weight,
-          reps: s.reps,
-          rest_seconds: s.rest_seconds,
-          completed: s.completed,
-          set_number: s.set_number,
-        });
-      }
-    } catch (err) {
-      console.error("Save set error:", err);
-    } finally {
-      setSaving(false);
-    }
+      });
+      debouncedSave(updated[idx]);
+      return updated;
+    });
   };
 
   const handleDeleteSet = async (idx: number) => {
@@ -191,6 +195,8 @@ export function SetEditor({
   };
 
   const handleClose = () => {
+    Object.values(saveTimers.current).forEach(clearTimeout);
+    saveTimers.current = {};
     const updatedSets = localSets.filter((s) => !s.isNew).map((s) => ({
       id: s.id,
       workout_id: s.workout_id,
@@ -281,8 +287,14 @@ export function SetEditor({
                     </Button>
                   </div>
 
-                  {isExpanded && (
-                    <div className="px-3 pb-3 pt-1 border-t bg-muted/20 space-y-3">
+                  <div
+                    className="overflow-hidden transition-all duration-200 ease-in-out"
+                    style={{
+                      maxHeight: isExpanded ? "300px" : "0px",
+                      opacity: isExpanded ? 1 : 0,
+                    }}
+                  >
+                    <div className="px-3 pb-3 pt-2 border-t bg-muted/20 space-y-3">
                       <SetFieldRow
                         label="무게 (kg)"
                         value={s.weight}
@@ -302,13 +314,8 @@ export function SetEditor({
                         onChange={(v) => handleFieldChange(idx, "rest_seconds", v)}
                         onAdjust={(d) => handleFieldAdjust(idx, "rest_seconds", d)}
                       />
-                      <div className="flex justify-end">
-                        <Button size="sm" className="h-7 px-4 text-xs" onClick={() => handleSaveSet(idx)} disabled={saving} data-testid={`button-save-set-${idx}`}>
-                          {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "저장"}
-                        </Button>
-                      </div>
                     </div>
-                  )}
+                  </div>
                 </div>
               );
             })}
@@ -364,20 +371,6 @@ export function SetEditor({
   );
 }
 
-function formatRestDisplay(seconds: number | null): string {
-  if (seconds === null || seconds === 0) return "";
-  const m = Math.floor(seconds / 100);
-  const s = seconds % 100;
-  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-}
-
-function formatRestLabel(seconds: number | null): string {
-  if (seconds === null) return "-";
-  const m = Math.floor(seconds / 100);
-  const s = seconds % 100;
-  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
-}
-
 function SetFieldRow({
   label,
   value,
@@ -395,19 +388,19 @@ function SetFieldRow({
     <div className="flex items-center gap-2">
       <span className="text-xs text-muted-foreground w-16 shrink-0">{label}</span>
       <div className="flex-1 flex items-center gap-1.5">
-        <Button variant="outline" size="sm" className="h-7 px-2 shrink-0 text-xs" onClick={() => onAdjust(-step)}>
-          -{step}
-        </Button>
         <Input
           type="number"
-          className="h-7 text-center text-sm px-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+          className="h-7 text-center text-sm px-1 flex-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
           value={value ?? ""}
           onChange={(e) => {
             const v = e.target.value;
             onChange(v === "" ? null : Number(v));
           }}
         />
-        <Button variant="outline" size="sm" className="h-7 px-2 shrink-0 text-xs" onClick={() => onAdjust(step)}>
+        <Button size="sm" className="h-7 px-2 shrink-0 text-xs bg-blue-500/15 text-blue-600 hover:bg-blue-500/25 border-0" variant="outline" onClick={() => onAdjust(-step)}>
+          -{step}
+        </Button>
+        <Button size="sm" className="h-7 px-2 shrink-0 text-xs bg-red-500/15 text-red-600 hover:bg-red-500/25 border-0" variant="outline" onClick={() => onAdjust(step)}>
           +{step}
         </Button>
       </div>
@@ -424,20 +417,16 @@ function RestFieldRow({
   onChange: (v: number | null) => void;
   onAdjust: (delta: number) => void;
 }) {
-  const displayVal = formatRestDisplay(value);
   return (
     <div className="flex items-center gap-2">
       <span className="text-xs text-muted-foreground w-16 shrink-0">휴식</span>
       <div className="flex-1 flex items-center gap-1.5">
-        <Button variant="outline" size="sm" className="h-7 px-2 shrink-0 text-xs" onClick={() => onAdjust(-30)}>
-          -30
-        </Button>
         <Input
           type="text"
           inputMode="numeric"
-          className="h-7 text-center text-sm px-1"
+          className="h-7 text-center text-sm px-1 flex-1"
           placeholder="00:00"
-          value={displayVal}
+          value={formatRestDisplay(value)}
           onChange={(e) => {
             const raw = e.target.value.replace(/\D/g, "");
             if (raw === "") {
@@ -447,7 +436,10 @@ function RestFieldRow({
             onChange(Number(raw));
           }}
         />
-        <Button variant="outline" size="sm" className="h-7 px-2 shrink-0 text-xs" onClick={() => onAdjust(30)}>
+        <Button size="sm" className="h-7 px-2 shrink-0 text-xs bg-blue-500/15 text-blue-600 hover:bg-blue-500/25 border-0" variant="outline" onClick={() => onAdjust(-30)}>
+          -30
+        </Button>
+        <Button size="sm" className="h-7 px-2 shrink-0 text-xs bg-red-500/15 text-red-600 hover:bg-red-500/25 border-0" variant="outline" onClick={() => onAdjust(30)}>
           +30
         </Button>
       </div>
@@ -482,7 +474,8 @@ function BulkEditPopup({
   };
 
   const applyAction = (action: "set" | "decrease" | "increase") => {
-    const val = Number(inputValue);
+    const raw = field === "rest_seconds" ? inputValue.replace(/\D/g, "") : inputValue;
+    const val = Number(raw);
     if (isNaN(val)) return;
     setLocalSets((prev) =>
       prev.map((s, i) => {
@@ -498,6 +491,7 @@ function BulkEditPopup({
   };
 
   const fieldLabel = field === "weight" ? "무게" : field === "reps" ? "횟수" : "휴식";
+  const isRestField = field === "rest_seconds";
 
   return (
     <div className="fixed inset-0 z-[60] bg-black/50 flex items-end justify-center" onClick={onCancel}>
@@ -542,7 +536,7 @@ function BulkEditPopup({
                   className={`flex-1 py-1.5 text-xs rounded-lg border transition-colors ${
                     field === f ? "bg-primary text-primary-foreground border-primary" : "border-border"
                   }`}
-                  onClick={() => setField(f)}
+                  onClick={() => { setField(f); setInputValue(""); }}
                   data-testid={`radio-field-${f}`}
                 >
                   {l}
@@ -552,21 +546,36 @@ function BulkEditPopup({
           </div>
 
           <div className="flex items-center gap-2">
-            <Input
-              type="number"
-              placeholder={`${fieldLabel} 값`}
-              className="h-8 text-sm flex-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-              value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
-              data-testid="input-bulk-value"
-            />
+            {isRestField ? (
+              <Input
+                type="text"
+                inputMode="numeric"
+                placeholder="00:00"
+                className="h-8 text-sm flex-1 text-center"
+                value={inputValue ? formatRestDisplay(Number(inputValue.replace(/\D/g, ""))) : ""}
+                onChange={(e) => {
+                  const raw = e.target.value.replace(/\D/g, "");
+                  setInputValue(raw);
+                }}
+                data-testid="input-bulk-value"
+              />
+            ) : (
+              <Input
+                type="number"
+                placeholder={`${fieldLabel} 값`}
+                className="h-8 text-sm flex-1 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                data-testid="input-bulk-value"
+              />
+            )}
             <Button variant="outline" size="sm" className="h-8 text-xs px-3" onClick={() => applyAction("set")} data-testid="button-bulk-set">
               지정
             </Button>
-            <Button variant="outline" size="sm" className="h-8 text-xs px-3" onClick={() => applyAction("decrease")} data-testid="button-bulk-decrease">
+            <Button size="sm" className="h-8 text-xs px-3 bg-blue-500/15 text-blue-600 hover:bg-blue-500/25 border-0" variant="outline" onClick={() => applyAction("decrease")} data-testid="button-bulk-decrease">
               감소
             </Button>
-            <Button variant="outline" size="sm" className="h-8 text-xs px-3" onClick={() => applyAction("increase")} data-testid="button-bulk-increase">
+            <Button size="sm" className="h-8 text-xs px-3 bg-red-500/15 text-red-600 hover:bg-red-500/25 border-0" variant="outline" onClick={() => applyAction("increase")} data-testid="button-bulk-increase">
               증가
             </Button>
           </div>
