@@ -198,6 +198,9 @@ export function SetEditor({
     } else if (restingSetIdx === idx) {
       stopTimer(idx);
     } else {
+      if (restingSetIdx !== null) {
+        completeSet(restingSetIdx);
+      }
       startRestTimer(idx, s.rest_seconds);
     }
   };
@@ -475,9 +478,6 @@ export function SetEditor({
               <div className="border-t px-4 py-3 flex items-center justify-center gap-2 bg-muted/30">
                 <Check className="h-4 w-4 text-emerald-500" />
                 <span className="text-sm font-medium">모든 세트 완료</span>
-                <Button size="sm" className="h-8 text-xs ml-2" onClick={() => setTimerState({ mode: "idle" })} data-testid="button-timer-dismiss">
-                  닫기
-                </Button>
               </div>
             );
             return (
