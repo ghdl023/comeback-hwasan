@@ -25,6 +25,8 @@ import {
   Square,
   Play,
   Timer,
+  Circle,
+  Pause,
 } from "lucide-react";
 
 interface SetEditorProps {
@@ -98,6 +100,7 @@ export function SetEditor({
   const saveTimers = useRef<Record<string, NodeJS.Timeout>>({});
   const [timerState, setTimerState] = useState<TimerState>({ mode: "idle" });
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const [restingSetIdx, setRestingSetIdx] = useState<number | null>(null);
 
   useEffect(() => {
     const mapped = sets
@@ -123,10 +126,26 @@ export function SetEditor({
     };
   }, []);
 
+  const completeSet = useCallback((idx: number) => {
+    setRestingSetIdx(null);
+    setLocalSets((prev) => {
+      const updated = prev.map((p, i) => (i === idx ? { ...p, completed: true } : p));
+      if (!updated[idx].isNew) {
+        updateWorkoutSet(updated[idx].id, { completed: true }).catch(console.error);
+      }
+      return updated;
+    });
+  }, []);
+
   const startRestTimer = useCallback((setIdx: number, restMmss: number | null) => {
     if (timerRef.current) clearInterval(timerRef.current);
     const totalSec = mmssToSeconds(restMmss);
-    if (totalSec <= 0) return;
+    if (totalSec <= 0) {
+      completeSet(setIdx);
+      setTimerState({ mode: "next", nextSetIdx: setIdx + 1 });
+      return;
+    }
+    setRestingSetIdx(setIdx);
     setTimerState({ mode: "running", setIdx, totalSec, remainSec: totalSec });
     timerRef.current = setInterval(() => {
       setTimerState((prev) => {
@@ -135,22 +154,20 @@ export function SetEditor({
         if (next <= 0) {
           if (timerRef.current) clearInterval(timerRef.current);
           timerRef.current = null;
+          completeSet(prev.setIdx);
           return { mode: "next", nextSetIdx: prev.setIdx + 1 };
         }
         return { ...prev, remainSec: next };
       });
     }, 1000);
-  }, []);
+  }, [completeSet]);
 
-  const stopTimer = useCallback((showNext: boolean, currentSetIdx: number) => {
+  const stopTimer = useCallback((currentSetIdx: number) => {
     if (timerRef.current) clearInterval(timerRef.current);
     timerRef.current = null;
-    if (showNext) {
-      setTimerState({ mode: "next", nextSetIdx: currentSetIdx + 1 });
-    } else {
-      setTimerState({ mode: "idle" });
-    }
-  }, []);
+    completeSet(currentSetIdx);
+    setTimerState({ mode: "next", nextSetIdx: currentSetIdx + 1 });
+  }, [completeSet]);
 
   const debouncedSave = useCallback((setData: LocalSet) => {
     if (setData.isNew) return;
@@ -168,15 +185,27 @@ export function SetEditor({
     }, 600);
   }, []);
 
-  const handleToggleComplete = (idx: number) => {
-    setLocalSets((prev) => {
-      const updated = prev.map((p, i) => (i === idx ? { ...p, completed: !p.completed } : p));
-      debouncedSave(updated[idx]);
-      if (updated[idx].completed && updated[idx].rest_seconds) {
-        startRestTimer(idx, updated[idx].rest_seconds);
-      }
-      return updated;
-    });
+  const handleStatusClick = (idx: number) => {
+    const s = localSets[idx];
+    if (s.completed) {
+      setLocalSets((prev) => {
+        const updated = prev.map((p, i) => (i === idx ? { ...p, completed: false } : p));
+        if (!updated[idx].isNew) {
+          updateWorkoutSet(updated[idx].id, { completed: false }).catch(console.error);
+        }
+        return updated;
+      });
+    } else if (restingSetIdx === idx) {
+      return;
+    } else {
+      startRestTimer(idx, s.rest_seconds);
+    }
+  };
+
+  const getSetStatus = (idx: number): "pending" | "resting" | "done" => {
+    if (localSets[idx]?.completed) return "done";
+    if (restingSetIdx === idx) return "resting";
+    return "pending";
   };
 
   const handleFieldChange = (idx: number, field: "weight" | "reps" | "rest_seconds", value: number | null) => {
@@ -298,15 +327,26 @@ export function SetEditor({
               return (
                 <div key={s.id || idx} className="border rounded-lg overflow-hidden" data-testid={`set-row-${idx}`}>
                   <div className="flex items-center gap-2 px-3 py-3">
-                    <button
-                      className={`w-7 h-7 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${
-                        s.completed ? "bg-primary border-primary" : "border-muted-foreground/30"
-                      }`}
-                      onClick={() => handleToggleComplete(idx)}
-                      data-testid={`button-complete-${idx}`}
-                    >
-                      {s.completed && <Check className="h-3.5 w-3.5 text-primary-foreground" />}
-                    </button>
+                    {(() => {
+                      const status = getSetStatus(idx);
+                      return (
+                        <button
+                          className={`w-7 h-7 rounded-full border-2 flex items-center justify-center shrink-0 transition-all ${
+                            status === "done"
+                              ? "bg-emerald-500 border-emerald-500"
+                              : status === "resting"
+                              ? "bg-amber-500 border-amber-500"
+                              : "border-muted-foreground/30"
+                          }`}
+                          onClick={() => handleStatusClick(idx)}
+                          data-testid={`button-complete-${idx}`}
+                        >
+                          {status === "done" && <Check className="h-3.5 w-3.5 text-white" />}
+                          {status === "resting" && <Pause className="h-3.5 w-3.5 text-white" />}
+                          {status === "pending" && <Circle className="h-3.5 w-3.5 text-muted-foreground/40" />}
+                        </button>
+                      );
+                    })()}
 
                     <span className="text-sm font-bold text-muted-foreground w-6 text-center shrink-0">{s.set_number}</span>
 
@@ -392,71 +432,79 @@ export function SetEditor({
           </div>
         </div>
 
-        {timerState.mode !== "idle" && (
-          <div className="shrink-0 safe-area-bottom" data-testid="rest-timer-area">
-            {timerState.mode === "running" && (
-              <div className="relative overflow-hidden border-t" data-testid="rest-timer-running">
-                <div
-                  className="absolute inset-0 bg-primary/15 transition-[width] duration-1000 ease-linear"
-                  style={{ width: `${((timerState.totalSec - timerState.remainSec) / timerState.totalSec) * 100}%` }}
-                />
-                <div className="relative flex items-center gap-3 px-4 py-3">
-                  <Timer className="h-5 w-5 text-primary shrink-0" />
-                  <span className="text-sm font-bold text-primary">휴식 타이머</span>
-                  <span className="text-lg font-mono font-bold flex-1 text-center">
-                    {secondsToMMSS(timerState.remainSec)}
-                    <span className="text-sm text-muted-foreground font-normal"> / {secondsToMMSS(timerState.totalSec)}</span>
-                  </span>
+        <div className="shrink-0 safe-area-bottom" data-testid="rest-timer-area">
+          {timerState.mode === "idle" && (
+            <div className="border-t px-4 py-3 bg-muted/10">
+              <div className="flex items-center gap-3">
+                <Timer className="h-5 w-5 text-muted-foreground shrink-0" />
+                <span className="text-sm text-muted-foreground">휴식 타이머</span>
+                <span className="text-sm text-muted-foreground/60 flex-1 text-center">세트를 클릭하여 시작</span>
+              </div>
+            </div>
+          )}
+
+          {timerState.mode === "running" && (
+            <div className="relative overflow-hidden border-t" data-testid="rest-timer-running">
+              <div
+                className="absolute inset-0 bg-primary/15 transition-[width] duration-1000 ease-linear"
+                style={{ width: `${((timerState.totalSec - timerState.remainSec) / timerState.totalSec) * 100}%` }}
+              />
+              <div className="relative flex items-center gap-3 px-4 py-3">
+                <Timer className="h-5 w-5 text-primary shrink-0" />
+                <span className="text-sm font-bold text-primary">휴식 타이머</span>
+                <span className="text-lg font-mono font-bold flex-1 text-center">
+                  {secondsToMMSS(timerState.remainSec)}
+                  <span className="text-sm text-muted-foreground font-normal"> / {secondsToMMSS(timerState.totalSec)}</span>
+                </span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9 shrink-0 text-destructive hover:bg-destructive/10"
+                  onClick={() => stopTimer(timerState.setIdx)}
+                  data-testid="button-timer-stop"
+                >
+                  <Square className="h-4 w-4 fill-current" />
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {timerState.mode === "next" && (() => {
+            const nextSet = localSets[timerState.nextSetIdx];
+            if (!nextSet) return (
+              <div className="border-t px-4 py-3 flex items-center justify-center gap-2 bg-muted/30">
+                <Check className="h-4 w-4 text-emerald-500" />
+                <span className="text-sm font-medium">모든 세트 완료</span>
+                <Button size="sm" className="h-8 text-xs ml-2" onClick={() => setTimerState({ mode: "idle" })} data-testid="button-timer-dismiss">
+                  닫기
+                </Button>
+              </div>
+            );
+            return (
+              <div className="border-t px-4 py-3 bg-muted/20" data-testid="rest-timer-next">
+                <div className="flex items-center gap-3">
+                  <div className="flex-1">
+                    <span className="text-xs text-muted-foreground">다음 세트</span>
+                    <div className="flex items-center gap-3 mt-0.5">
+                      <span className="text-base font-bold">세트 {nextSet.set_number}</span>
+                      <span className="text-sm text-muted-foreground">
+                        {nextSet.weight ?? "-"}kg · {nextSet.reps ?? "-"}회
+                      </span>
+                    </div>
+                  </div>
                   <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-9 w-9 shrink-0 text-destructive hover:bg-destructive/10"
-                    onClick={() => stopTimer(true, timerState.setIdx)}
-                    data-testid="button-timer-stop"
+                    size="sm"
+                    className="h-9 px-4 text-sm gap-1.5"
+                    onClick={() => startRestTimer(timerState.nextSetIdx, nextSet.rest_seconds)}
+                    data-testid="button-timer-start-rest"
                   >
-                    <Square className="h-4 w-4 fill-current" />
+                    <Play className="h-3.5 w-3.5 fill-current" /> 휴식 시작
                   </Button>
                 </div>
               </div>
-            )}
-
-            {timerState.mode === "next" && (() => {
-              const nextSet = localSets[timerState.nextSetIdx];
-              if (!nextSet) return (
-                <div className="border-t px-4 py-3 flex items-center justify-center gap-2 bg-muted/30">
-                  <Check className="h-4 w-4 text-primary" />
-                  <span className="text-sm font-medium">모든 세트 완료</span>
-                  <Button size="sm" className="h-8 text-xs ml-2" onClick={() => setTimerState({ mode: "idle" })} data-testid="button-timer-dismiss">
-                    닫기
-                  </Button>
-                </div>
-              );
-              return (
-                <div className="border-t px-4 py-3 bg-muted/20" data-testid="rest-timer-next">
-                  <div className="flex items-center gap-3">
-                    <div className="flex-1">
-                      <span className="text-xs text-muted-foreground">다음 세트</span>
-                      <div className="flex items-center gap-3 mt-0.5">
-                        <span className="text-base font-bold">세트 {nextSet.set_number}</span>
-                        <span className="text-sm text-muted-foreground">
-                          {nextSet.weight ?? "-"}kg · {nextSet.reps ?? "-"}회
-                        </span>
-                      </div>
-                    </div>
-                    <Button
-                      size="sm"
-                      className="h-9 px-4 text-sm gap-1.5"
-                      onClick={() => startRestTimer(timerState.nextSetIdx, nextSet.rest_seconds)}
-                      data-testid="button-timer-start-rest"
-                    >
-                      <Play className="h-3.5 w-3.5 fill-current" /> 휴식 시작
-                    </Button>
-                  </div>
-                </div>
-              );
-            })()}
-          </div>
-        )}
+            );
+          })()}
+        </div>
       </div>
 
       {bulkEditOpen && (
