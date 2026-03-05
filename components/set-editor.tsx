@@ -204,7 +204,8 @@ export function SetEditor({
     } else if (restingSetIdx === idx) {
       stopTimer(idx);
     } else {
-      startRestTimer(idx, s.rest_seconds, restingSetIdx !== null ? restingSetIdx : undefined);
+      const restVal = s.rest_seconds ?? localSets.find((ls) => ls.rest_seconds !== null && ls.rest_seconds > 0)?.rest_seconds ?? null;
+      startRestTimer(idx, restVal, restingSetIdx !== null ? restingSetIdx : undefined);
     }
   };
 
@@ -511,7 +512,10 @@ export function SetEditor({
                   <Button
                     size="sm"
                     className="h-9 px-4 text-sm gap-1.5"
-                    onClick={() => startRestTimer(timerState.nextSetIdx, nextSet.rest_seconds)}
+                    onClick={() => {
+                      const rv = nextSet.rest_seconds ?? localSets.find((ls) => ls.rest_seconds !== null && ls.rest_seconds > 0)?.rest_seconds ?? null;
+                      startRestTimer(timerState.nextSetIdx, rv);
+                    }}
                     data-testid="button-timer-start-rest"
                   >
                     <Play className="h-3.5 w-3.5 fill-current" /> 휴식 시작
