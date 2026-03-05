@@ -397,10 +397,10 @@ function SetFieldRow({
             onChange(v === "" ? null : Number(v));
           }}
         />
-        <Button size="sm" className="h-9 px-3 shrink-0 text-sm font-medium bg-blue-500/15 text-blue-600 hover:bg-blue-500/25 border-0" variant="outline" onClick={() => onAdjust(-step)}>
+        <Button size="sm" className="h-9 w-12 shrink-0 text-sm font-medium bg-blue-500/15 text-blue-600 hover:bg-blue-500/25 border-0 px-0" variant="outline" onClick={() => onAdjust(-step)}>
           -{step}
         </Button>
-        <Button size="sm" className="h-9 px-3 shrink-0 text-sm font-medium bg-red-500/15 text-red-600 hover:bg-red-500/25 border-0" variant="outline" onClick={() => onAdjust(step)}>
+        <Button size="sm" className="h-9 w-12 shrink-0 text-sm font-medium bg-red-500/15 text-red-600 hover:bg-red-500/25 border-0 px-0" variant="outline" onClick={() => onAdjust(step)}>
           +{step}
         </Button>
       </div>
@@ -436,10 +436,10 @@ function RestFieldRow({
             onChange(Number(raw));
           }}
         />
-        <Button size="sm" className="h-9 px-3 shrink-0 text-sm font-medium bg-blue-500/15 text-blue-600 hover:bg-blue-500/25 border-0" variant="outline" onClick={() => onAdjust(-30)}>
+        <Button size="sm" className="h-9 w-12 shrink-0 text-sm font-medium bg-blue-500/15 text-blue-600 hover:bg-blue-500/25 border-0 px-0" variant="outline" onClick={() => onAdjust(-30)}>
           -30
         </Button>
-        <Button size="sm" className="h-9 px-3 shrink-0 text-sm font-medium bg-red-500/15 text-red-600 hover:bg-red-500/25 border-0" variant="outline" onClick={() => onAdjust(30)}>
+        <Button size="sm" className="h-9 w-12 shrink-0 text-sm font-medium bg-red-500/15 text-red-600 hover:bg-red-500/25 border-0 px-0" variant="outline" onClick={() => onAdjust(30)}>
           +30
         </Button>
       </div>
