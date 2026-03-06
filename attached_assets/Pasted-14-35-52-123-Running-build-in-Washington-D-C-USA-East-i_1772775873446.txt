@@ -1,0 +1,40 @@
+14:35:52.123 Running build in Washington, D.C., USA (East) – iad1
+14:35:52.123 Build machine configuration: 2 cores, 8 GB
+14:35:52.133 Cloning github.com/ghdl023/comeback-hwasan (Branch: main, Commit: 6c219e6)
+14:35:52.134 Skipping build cache, deployment was triggered without cache.
+14:35:52.486 Cloning completed: 353.000ms
+14:35:54.504 Running "vercel build"
+14:35:55.118 Vercel CLI 50.28.0
+14:35:55.433 Installing dependencies...
+14:36:14.731 
+14:36:14.732 added 618 packages in 19s
+14:36:14.733 
+14:36:14.734 82 packages are looking for funding
+14:36:14.734   run `npm fund` for details
+14:36:14.804 Detected Next.js version: 15.5.12
+14:36:14.811 Running "npm run build"
+14:36:14.910 
+14:36:14.911 > rest-express@1.0.0 build
+14:36:14.911 > tsx script/build.ts
+14:36:14.911 
+14:36:15.190 
+14:36:15.190 node:internal/modules/run_main:107
+14:36:15.190     triggerUncaughtException(
+14:36:15.190     ^
+14:36:15.191 Error [ERR_MODULE_NOT_FOUND]: Cannot find module '/vercel/path0/script/build.ts' imported from /vercel/path0/
+14:36:15.191     at finalizeResolution (node:internal/modules/esm/resolve:274:11)
+14:36:15.191     at moduleResolve (node:internal/modules/esm/resolve:864:10)
+14:36:15.191     at defaultResolve (node:internal/modules/esm/resolve:990:11)
+14:36:15.191     at nextResolve (node:internal/modules/esm/hooks:785:28)
+14:36:15.191     at resolveBase (file:///vercel/path0/node_modules/tsx/dist/esm/index.mjs?1772775375084:2:3744)
+14:36:15.191     at async resolveDirectory (file:///vercel/path0/node_modules/tsx/dist/esm/index.mjs?1772775375084:2:4237)
+14:36:15.191     at async resolve (file:///vercel/path0/node_modules/tsx/dist/esm/index.mjs?1772775375084:2:5355)
+14:36:15.191     at async nextResolve (node:internal/modules/esm/hooks:785:22)
+14:36:15.191     at async AsyncLoaderHooksOnLoaderHookWorker.resolve (node:internal/modules/esm/hooks:269:24)
+14:36:15.192     at async handleMessage (node:internal/modules/esm/worker:251:18) {
+14:36:15.192   code: 'ERR_MODULE_NOT_FOUND',
+14:36:15.192   url: 'file:///vercel/path0/script/build.ts'
+14:36:15.192 }
+14:36:15.192 
+14:36:15.192 Node.js v24.13.0
+14:36:15.222 Error: Command "npm run build" exited with 1
