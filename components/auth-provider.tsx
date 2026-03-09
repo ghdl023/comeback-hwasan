@@ -6,6 +6,8 @@ import {
   onAuthStateChanged,
   onIdTokenChanged,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   GoogleAuthProvider,
   signOut as firebaseSignOut,
   type User,
@@ -75,21 +77,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => clearInterval(interval);
   }, [idToken]);
 
+  useEffect(() => {
+    getRedirectResult(auth)
+      .then(async (result) => {
+        if (result) {
+          const firebaseUser = result.user;
+          const userData = await upsertUserOnLogin({
+            uid: firebaseUser.uid,
+            email: firebaseUser.email,
+            displayName: firebaseUser.displayName,
+            photoURL: firebaseUser.photoURL,
+          });
+          setAppUser(userData);
+          const token = await firebaseUser.getIdToken();
+          setIdToken(token);
+        }
+      })
+      .catch((error) => {
+        console.error("Redirect sign-in error:", error);
+      });
+  }, []);
+
   const signInWithGoogle = useCallback(async () => {
     try {
-      const result = await signInWithPopup(auth, googleProvider);
-      const firebaseUser = result.user;
-
-      const userData = await upsertUserOnLogin({
-        uid: firebaseUser.uid,
-        email: firebaseUser.email,
-        displayName: firebaseUser.displayName,
-        photoURL: firebaseUser.photoURL,
-      });
-      setAppUser(userData);
-
-      const token = await firebaseUser.getIdToken();
-      setIdToken(token);
+      await signInWithRedirect(auth, googleProvider);
     } catch (error: unknown) {
       console.error("Google sign-in failed:", error);
     }
