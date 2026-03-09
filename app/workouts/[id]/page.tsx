@@ -121,7 +121,7 @@ export default function WorkoutDetailPage() {
 
   const workoutDate = workout ? new Date(workout.performed_at) : null;
   const todayStr = new Date().toISOString().split("T")[0];
-  const isToday = workoutDate
+  const isToday = workoutDate && workout
     ? workout.performed_at.split("T")[0] === todayStr
     : false;
 
