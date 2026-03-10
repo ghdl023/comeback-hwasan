@@ -40,6 +40,7 @@ import { ExerciseSelector, type ExistingDayExercise } from "@/components/exercis
 import { SetEditor } from "@/components/set-editor";
 import { SortableExerciseList } from "@/components/sortable-exercise-list";
 import { FloatingTimer } from "@/components/floating-timer";
+import { WorkoutHistoryCalendar } from "@/components/workout-history-calendar";
 import { useRestTimer } from "@/components/rest-timer-context";
 import {
   Loader2,
@@ -49,6 +50,7 @@ import {
   ChevronUp,
   ChevronDown,
   CalendarCheck,
+  CalendarDays,
   Repeat,
   Dumbbell,
   Clock,
@@ -131,11 +133,13 @@ export default function DashboardPage() {
   const [setEditExerciseId, setSetEditExerciseId] = useState<string | null>(
     null,
   );
+  const [historyCalendarOpen, setHistoryCalendarOpen] = useState(false);
   const exerciseSelectorBackRef = useRef<(() => boolean) | null>(null);
 
   const prevDetailRef = useRef(false);
   const prevSelectorRef = useRef(false);
   const prevSetEditorRef = useRef<string | null>(null);
+  const prevHistoryRef = useRef(false);
   const isPopStateRef = useRef(false);
 
   useEffect(() => {
@@ -144,6 +148,7 @@ export default function DashboardPage() {
       prevDetailRef.current = detailOpen;
       prevSelectorRef.current = exerciseSelectorOpen;
       prevSetEditorRef.current = setEditExerciseId;
+      prevHistoryRef.current = historyCalendarOpen;
       return;
     }
 
@@ -156,11 +161,15 @@ export default function DashboardPage() {
     if (setEditExerciseId && !prevSetEditorRef.current) {
       window.history.pushState({ view: "setEditor" }, "");
     }
+    if (historyCalendarOpen && !prevHistoryRef.current) {
+      window.history.pushState({ view: "history" }, "");
+    }
 
     prevDetailRef.current = detailOpen;
     prevSelectorRef.current = exerciseSelectorOpen;
     prevSetEditorRef.current = setEditExerciseId;
-  }, [detailOpen, exerciseSelectorOpen, setEditExerciseId]);
+    prevHistoryRef.current = historyCalendarOpen;
+  }, [detailOpen, exerciseSelectorOpen, setEditExerciseId, historyCalendarOpen]);
 
   useEffect(() => {
     window.history.replaceState({ view: "root" }, "");
@@ -179,6 +188,8 @@ export default function DashboardPage() {
           }
         }
         setExerciseSelectorOpen(false);
+      } else if (historyCalendarOpen) {
+        setHistoryCalendarOpen(false);
       } else if (detailOpen) {
         setDetailOpen(false);
       } else {
@@ -188,7 +199,7 @@ export default function DashboardPage() {
 
     window.addEventListener("popstate", handlePopState);
     return () => window.removeEventListener("popstate", handlePopState);
-  }, [detailOpen, exerciseSelectorOpen, setEditExerciseId]);
+  }, [detailOpen, exerciseSelectorOpen, setEditExerciseId, historyCalendarOpen]);
 
   useEffect(() => {
     if (!user) {
@@ -781,6 +792,12 @@ export default function DashboardPage() {
   );
   const isTodaySelected = isTodayDate(selectedDate);
 
+  const workoutDatesSet = useMemo(() => {
+    const dates = new Set<string>();
+    workouts.forEach((w) => dates.add(w.performed_at));
+    return dates;
+  }, [workouts]);
+
   const existingDayExercises: ExistingDayExercise[] = useMemo(() => {
     return sortedExerciseEntries.map(([exId, exSets]) => {
       const exercise = exerciseMap.get(exId);
@@ -1272,14 +1289,25 @@ export default function DashboardPage() {
         </div>
       }
       headerRight={
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-8 w-8"
-          data-testid="button-settings"
-        >
-          <Settings className="h-5 w-5" />
-        </Button>
+        <div className="flex items-center gap-0.5">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => setHistoryCalendarOpen(true)}
+            data-testid="button-history-calendar"
+          >
+            <CalendarDays className="h-5 w-5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            data-testid="button-settings"
+          >
+            <Settings className="h-5 w-5" />
+          </Button>
+        </div>
       }
     >
       <div
@@ -1444,6 +1472,11 @@ export default function DashboardPage() {
         onSelect={handleExercisesSelected}
         existingDayExercises={existingDayExercises}
         onBackRef={exerciseSelectorBackRef}
+      />
+      <WorkoutHistoryCalendar
+        open={historyCalendarOpen}
+        onClose={() => setHistoryCalendarOpen(false)}
+        workoutDates={workoutDatesSet}
       />
       {!setEditExerciseId && timerState.mode === "running" && timerTarget && (
         <FloatingTimer
