@@ -20,7 +20,7 @@ export function AppShell({ children, showHeader = true, headerCenter, headerRigh
       <SidePanel open={sidePanelOpen} onClose={() => setSidePanelOpen(false)} />
 
       {showHeader && (
-        <div className="flex items-center justify-between px-3 pt-4 pb-2.5 border-b bg-background shrink-0 safe-area-top">
+        <div className="flex items-center justify-between px-3 pt-8 pb-2.5 border-b bg-background shrink-0 safe-area-top">
           <Button
             variant="ghost"
             size="icon"
