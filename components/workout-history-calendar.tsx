@@ -10,22 +10,6 @@ interface WorkoutHistoryCalendarProps {
   workoutDates: Set<string>;
 }
 
-const DAY_HEADERS = ["일", "월", "화", "수", "목", "금", "토"];
-
-function generateMonthGrid(year: number, month: number) {
-  const firstDay = new Date(year, month, 1);
-  const lastDay = new Date(year, month + 1, 0);
-  const startDow = firstDay.getDay();
-  const daysInMonth = lastDay.getDate();
-
-  const cells: (number | null)[] = [];
-  for (let i = 0; i < startDow; i++) cells.push(null);
-  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
-  while (cells.length % 7 !== 0) cells.push(null);
-
-  return cells;
-}
-
 export function WorkoutHistoryCalendar({
   open,
   onClose,
@@ -35,16 +19,16 @@ export function WorkoutHistoryCalendar({
   const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
 
   const months = useMemo(() => {
-    const result: { year: number; month: number; label: string }[] = [];
+    const result: { year: number; month: number; label: string; daysInMonth: number }[] = [];
     const now = new Date();
     for (let i = 0; i < 12; i++) {
-      const y = now.getFullYear();
-      const m = now.getMonth() - i;
-      const d = new Date(y, m, 1);
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const last = new Date(d.getFullYear(), d.getMonth() + 1, 0);
       result.push({
         year: d.getFullYear(),
         month: d.getMonth(),
         label: `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, "0")}`,
+        daysInMonth: last.getDate(),
       });
     }
     return result;
@@ -66,9 +50,13 @@ export function WorkoutHistoryCalendar({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50" data-testid="workout-history-calendar">
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/50"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+      data-testid="workout-history-calendar"
+    >
       <div className="w-full max-w-md bg-background rounded-t-2xl flex flex-col" style={{ maxHeight: "85dvh" }}>
-        <div className="flex items-center justify-between px-4 pt-4 pb-2 border-b shrink-0">
+        <div className="flex items-center justify-between px-4 pt-4 pb-3 border-b shrink-0">
           <h2 className="text-base font-semibold">운동 기록</h2>
           <Button
             variant="ghost"
@@ -81,64 +69,53 @@ export function WorkoutHistoryCalendar({
           </Button>
         </div>
 
-        <div className="flex-1 overflow-y-auto overscroll-contain p-4 space-y-6">
-          {months.map(({ year, month, label }) => {
-            const cells = generateMonthGrid(year, month);
+        <div className="flex-1 overflow-y-auto overscroll-contain">
+          {months.map(({ year, month, label, daysInMonth }, monthIdx) => {
             const workoutCount = monthStats[`${year}-${month}`] || 0;
+            const days: number[] = [];
+            for (let d = 1; d <= daysInMonth; d++) days.push(d);
+
             return (
-              <div key={label}>
-                <div className="flex items-baseline gap-3 mb-2">
-                  <span className="text-sm font-bold">{label}</span>
-                  <span className="text-xs text-muted-foreground">
-                    {workoutCount}일 운동
-                  </span>
-                </div>
+              <div
+                key={label}
+                className={monthIdx < months.length - 1 ? "border-b border-border/60" : ""}
+              >
+                <div className="flex gap-3 px-3 py-3">
+                  <div className="shrink-0 w-[72px] pt-0.5">
+                    <p className="text-xs font-bold leading-tight">{label}</p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">
+                      {workoutCount}일 운동
+                    </p>
+                  </div>
 
-                <div className="grid grid-cols-7 gap-px">
-                  {DAY_HEADERS.map((d, i) => (
-                    <div
-                      key={`h-${i}`}
-                      className={`text-center text-[10px] font-medium pb-1 ${
-                        i === 0 ? "text-red-400" : i === 6 ? "text-blue-400" : "text-muted-foreground"
-                      }`}
-                    >
-                      {d}
-                    </div>
-                  ))}
+                  <div className="flex-1 flex flex-wrap gap-[3px] content-start">
+                    {days.map((day) => {
+                      const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+                      const hasWorkout = workoutDates.has(dateStr);
+                      const isToday = dateStr === todayStr;
+                      const isFuture = dateStr > todayStr;
 
-                  {cells.map((day, idx) => {
-                    if (day === null) {
-                      return <div key={`e-${idx}`} className="aspect-square" />;
-                    }
-                    const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
-                    const hasWorkout = workoutDates.has(dateStr);
-                    const isToday = dateStr === todayStr;
-                    const dow = idx % 7;
-
-                    return (
-                      <div
-                        key={dateStr}
-                        className={`aspect-square flex items-center justify-center text-[11px] rounded-sm relative ${
-                          hasWorkout
-                            ? "bg-primary/20 text-primary font-semibold"
-                            : ""
-                        } ${
-                          isToday
-                            ? "ring-1 ring-primary font-bold"
-                            : ""
-                        } ${
-                          dow === 0 && !hasWorkout ? "text-red-400/60" : ""
-                        } ${
-                          dow === 6 && !hasWorkout ? "text-blue-400/60" : ""
-                        } ${
-                          !hasWorkout && dow !== 0 && dow !== 6 ? "text-muted-foreground/50" : ""
-                        }`}
-                        data-testid={`history-day-${dateStr}`}
-                      >
-                        {day}
-                      </div>
-                    );
-                  })}
+                      return (
+                        <div
+                          key={dateStr}
+                          className={`w-[26px] h-[26px] rounded-md flex items-center justify-center text-[12px] font-semibold leading-none ${
+                            isFuture
+                              ? "bg-muted/30 text-muted-foreground/30"
+                              : hasWorkout
+                                ? "bg-blue-500/80 text-white"
+                                : "bg-muted/60 text-muted-foreground/60"
+                          } ${
+                            isToday
+                              ? "ring-2 ring-red-500 ring-offset-1 ring-offset-background"
+                              : ""
+                          }`}
+                          data-testid={`history-day-${dateStr}`}
+                        >
+                          {day}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               </div>
             );
