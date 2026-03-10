@@ -3,8 +3,10 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import Image from "next/image";
 import { X } from "lucide-react";
+import { useAuth } from "@/components/auth-provider";
 
 export function FloatingQuote() {
+  const { user } = useAuth();
   const [quotes, setQuotes] = useState<string[]>([]);
   const [currentQuote, setCurrentQuote] = useState<string | null>(null);
   const [visible, setVisible] = useState(false);
@@ -109,7 +111,7 @@ export function FloatingQuote() {
     }
   }, [showRandomQuote]);
 
-  if (position.x === -1) return null;
+  if (!user || position.x === -1) return null;
 
   return (
     <>
