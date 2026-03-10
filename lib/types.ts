@@ -125,3 +125,11 @@ export const EXERCISE_CATEGORIES = [
 ] as const;
 
 export type ExerciseCategory = (typeof EXERCISE_CATEGORIES)[number];
+
+export type CalendarDisplayItem = "workout" | "body" | "memo";
+
+export interface CalendarSettings {
+  fontSize: number;
+  displayOrder: CalendarDisplayItem[];
+  showDuration: boolean;
+}

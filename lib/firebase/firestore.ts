@@ -1,4 +1,4 @@
-import type { BodyRecord, Memo } from "@/lib/types";
+import type { BodyRecord, CalendarSettings, Memo } from "@/lib/types";
 import {
   collection,
   doc,
@@ -402,4 +402,45 @@ export async function getMemosByUserMonth(
   return snap.docs
     .map((d) => serializeDoc<Memo>(d.id, d.data()))
     .filter((m) => m.date.startsWith(prefix) && m.show_on_calendar);
+}
+
+export const DEFAULT_CALENDAR_SETTINGS: CalendarSettings = {
+  fontSize: 8,
+  displayOrder: ["workout", "body", "memo"],
+  showDuration: true,
+};
+
+const VALID_DISPLAY_ITEMS = new Set<CalendarDisplayItem>(["workout", "body", "memo"]);
+
+function normalizeDisplayOrder(order: unknown): CalendarDisplayItem[] {
+  if (!Array.isArray(order)) return [...DEFAULT_CALENDAR_SETTINGS.displayOrder];
+  const filtered = order.filter((item): item is CalendarDisplayItem => VALID_DISPLAY_ITEMS.has(item));
+  const seen = new Set<CalendarDisplayItem>();
+  const unique = filtered.filter((item) => {
+    if (seen.has(item)) return false;
+    seen.add(item);
+    return true;
+  });
+  for (const item of DEFAULT_CALENDAR_SETTINGS.displayOrder) {
+    if (!unique.includes(item)) unique.push(item);
+  }
+  return unique;
+}
+
+export async function getCalendarSettings(userId: string): Promise<CalendarSettings> {
+  const ref = doc(db, "user_settings", userId);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) return { ...DEFAULT_CALENDAR_SETTINGS };
+  const data = snap.data();
+  const fontSize = typeof data.fontSize === "number" ? Math.min(10, Math.max(6, data.fontSize)) : DEFAULT_CALENDAR_SETTINGS.fontSize;
+  return {
+    fontSize,
+    displayOrder: normalizeDisplayOrder(data.displayOrder),
+    showDuration: typeof data.showDuration === "boolean" ? data.showDuration : DEFAULT_CALENDAR_SETTINGS.showDuration,
+  };
+}
+
+export async function saveCalendarSettings(userId: string, settings: CalendarSettings): Promise<void> {
+  const ref = doc(db, "user_settings", userId);
+  await setDoc(ref, settings, { merge: true });
 }

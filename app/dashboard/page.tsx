@@ -18,6 +18,9 @@ import {
   getBodyRecordsByMonth,
   getLatestBodyRecord,
   updateWorkoutExerciseOrder,
+  getCalendarSettings,
+  saveCalendarSettings,
+  DEFAULT_CALENDAR_SETTINGS,
 } from "@/lib/firebase/firestore";
 import type {
   Workout,
@@ -26,6 +29,7 @@ import type {
   MuscleGroup,
   Memo,
   BodyRecord,
+  CalendarSettings,
 } from "@/lib/types";
 import { MUSCLE_GROUP_LABELS } from "@/lib/types";
 import { useEffect, useState, useMemo, useRef, useCallback } from "react";
@@ -41,6 +45,7 @@ import { SetEditor } from "@/components/set-editor";
 import { SortableExerciseList } from "@/components/sortable-exercise-list";
 import { FloatingTimer } from "@/components/floating-timer";
 import { WorkoutHistoryCalendar } from "@/components/workout-history-calendar";
+import { CalendarSettingsModal } from "@/components/calendar-settings-modal";
 import { useRestTimer } from "@/components/rest-timer-context";
 import {
   Loader2,
@@ -134,6 +139,8 @@ export default function DashboardPage() {
     null,
   );
   const [historyCalendarOpen, setHistoryCalendarOpen] = useState(false);
+  const [settingsModalOpen, setSettingsModalOpen] = useState(false);
+  const [calendarSettings, setCalendarSettings] = useState<CalendarSettings>({ ...DEFAULT_CALENDAR_SETTINGS });
   const exerciseSelectorBackRef = useRef<(() => boolean) | null>(null);
 
   const prevDetailRef = useRef(false);
@@ -208,14 +215,16 @@ export default function DashboardPage() {
     }
     const fetchData = async () => {
       try {
-        const [w, s, e] = await Promise.all([
+        const [w, s, e, cs] = await Promise.all([
           getWorkouts(user.uid).catch(() => [] as Workout[]),
           getWorkoutSetsByUser(user.uid).catch(() => [] as WorkoutSet[]),
           getExercises(user.uid).catch(() => [] as Exercise[]),
+          getCalendarSettings(user.uid).catch(() => ({ ...DEFAULT_CALENDAR_SETTINGS })),
         ]);
         setWorkouts(w);
         setSets(s);
         setExercises(e);
+        setCalendarSettings(cs);
       } catch (err) {
         console.error("Dashboard fetch error:", err);
       } finally {
@@ -762,6 +771,21 @@ export default function DashboardPage() {
     });
   }, [groupedByExercise, dayWorkouts]);
 
+  const settingsSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleSettingsChange = useCallback(
+    (newSettings: CalendarSettings) => {
+      setCalendarSettings(newSettings);
+      if (settingsSaveTimerRef.current) clearTimeout(settingsSaveTimerRef.current);
+      settingsSaveTimerRef.current = setTimeout(() => {
+        if (user) {
+          saveCalendarSettings(user.uid, newSettings).catch(console.error);
+        }
+      }, 500);
+    },
+    [user],
+  );
+
   const handleExerciseReorder = useCallback(async (newOrder: string[]) => {
     const workout = dayWorkouts[0];
     if (!workout) return;
@@ -1249,7 +1273,7 @@ export default function DashboardPage() {
   return (
     <AppShell
       showHeader={!detailOpen}
-      headerCenter={
+      headerLeft={
         <div ref={monthPickerRef} className="relative">
           <button
             className="flex items-center gap-1.5 text-sm font-semibold px-2 py-1 rounded-md hover:bg-muted/50 transition-colors"
@@ -1262,7 +1286,7 @@ export default function DashboardPage() {
             />
           </button>
           {monthPickerOpen && (
-            <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 bg-background border rounded-lg shadow-lg p-2 z-20 flex items-center gap-2">
+            <div className="absolute top-full left-0 mt-1 bg-background border rounded-lg shadow-lg p-2 z-20 flex items-center gap-2">
               <Button
                 variant="ghost"
                 size="icon"
@@ -1303,6 +1327,7 @@ export default function DashboardPage() {
             variant="ghost"
             size="icon"
             className="h-8 w-8"
+            onClick={() => setSettingsModalOpen(true)}
             data-testid="button-settings"
           >
             <Settings className="h-5 w-5" />
@@ -1354,7 +1379,7 @@ export default function DashboardPage() {
                     <span className="text-[9px] font-semibold text-muted-foreground/80 leading-tight">
                       {week.weekNumber}주
                     </span>
-                    {stats.duration > 0 && (
+                    {calendarSettings.showDuration && stats.duration > 0 && (
                       <span className="text-[8px] text-muted-foreground/60 leading-tight mt-0.5">
                         {formatDuration(stats.duration)}
                       </span>
@@ -1396,44 +1421,72 @@ export default function DashboardPage() {
                         </div>
                         {info && isCurrentMonth && (
                           <div className="w-full mt-0.5 space-y-px overflow-hidden">
-                            {info.bodyWeight != null && (
-                              <div className="bg-emerald-100 dark:bg-emerald-900/30 rounded-sm px-0.5 py-px">
-                                <p className="text-[8px] text-emerald-700 dark:text-emerald-300 font-medium truncate text-left leading-tight">
-                                  체중 {info.bodyWeight}kg
+                            {calendarSettings.showDuration && info.duration > 0 && (
+                              <div className="bg-sky-50 dark:bg-sky-900/20 rounded-sm px-0.5 py-px">
+                                <p style={{ fontSize: `${calendarSettings.fontSize}px` }} className="text-sky-600 dark:text-sky-400 font-medium truncate text-left leading-tight">
+                                  {formatDuration(info.duration)}
                                 </p>
                               </div>
                             )}
-                            {info.bodySkeletalMuscle != null && (
-                              <div className="bg-emerald-100 dark:bg-emerald-900/30 rounded-sm px-0.5 py-px">
-                                <p className="text-[8px] text-emerald-700 dark:text-emerald-300 font-medium truncate text-left leading-tight">
-                                  골격근 {info.bodySkeletalMuscle}kg
-                                </p>
-                              </div>
-                            )}
-                            {info.bodyFat != null && (
-                              <div className="bg-emerald-100 dark:bg-emerald-900/30 rounded-sm px-0.5 py-px">
-                                <p className="text-[8px] text-emerald-700 dark:text-emerald-300 font-medium truncate text-left leading-tight">
-                                  체지방 {info.bodyFat}%
-                                </p>
-                              </div>
-                            )}
-                            {info.muscleGroups.map((mg) => (
-                              <div
-                                key={mg.name}
-                                className="bg-sky-100 dark:bg-sky-900/30 rounded-sm px-0.5 py-px"
-                              >
-                                <p className="text-[8px] text-sky-700 dark:text-sky-300 font-medium truncate text-left leading-tight">
-                                  {mg.name} {mg.count}
-                                </p>
-                              </div>
-                            ))}
-                            {info.memoText && (
-                              <div className="bg-yellow-100 dark:bg-yellow-900/30 rounded-sm px-0.5 py-px">
-                                <p className="text-[8px] text-yellow-800 dark:text-yellow-300 truncate text-left leading-tight">
-                                  {info.memoText}
-                                </p>
-                              </div>
-                            )}
+                            {calendarSettings.displayOrder.map((section) => {
+                              if (section === "body") {
+                                const hasBody = info.bodyWeight != null || info.bodySkeletalMuscle != null || info.bodyFat != null;
+                                if (!hasBody) return null;
+                                return (
+                                  <div key="body" className="space-y-px">
+                                    {info.bodyWeight != null && (
+                                      <div className="bg-emerald-100 dark:bg-emerald-900/30 rounded-sm px-0.5 py-px">
+                                        <p style={{ fontSize: `${calendarSettings.fontSize}px` }} className="text-emerald-700 dark:text-emerald-300 font-medium truncate text-left leading-tight">
+                                          체중 {info.bodyWeight}kg
+                                        </p>
+                                      </div>
+                                    )}
+                                    {info.bodySkeletalMuscle != null && (
+                                      <div className="bg-emerald-100 dark:bg-emerald-900/30 rounded-sm px-0.5 py-px">
+                                        <p style={{ fontSize: `${calendarSettings.fontSize}px` }} className="text-emerald-700 dark:text-emerald-300 font-medium truncate text-left leading-tight">
+                                          골격근 {info.bodySkeletalMuscle}kg
+                                        </p>
+                                      </div>
+                                    )}
+                                    {info.bodyFat != null && (
+                                      <div className="bg-emerald-100 dark:bg-emerald-900/30 rounded-sm px-0.5 py-px">
+                                        <p style={{ fontSize: `${calendarSettings.fontSize}px` }} className="text-emerald-700 dark:text-emerald-300 font-medium truncate text-left leading-tight">
+                                          체지방 {info.bodyFat}%
+                                        </p>
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              }
+                              if (section === "workout") {
+                                if (info.muscleGroups.length === 0) return null;
+                                return (
+                                  <div key="workout" className="space-y-px">
+                                    {info.muscleGroups.map((mg) => (
+                                      <div
+                                        key={mg.name}
+                                        className="bg-sky-100 dark:bg-sky-900/30 rounded-sm px-0.5 py-px"
+                                      >
+                                        <p style={{ fontSize: `${calendarSettings.fontSize}px` }} className="text-sky-700 dark:text-sky-300 font-medium truncate text-left leading-tight">
+                                          {mg.name} {mg.count}
+                                        </p>
+                                      </div>
+                                    ))}
+                                  </div>
+                                );
+                              }
+                              if (section === "memo") {
+                                if (!info.memoText) return null;
+                                return (
+                                  <div key="memo" className="bg-yellow-100 dark:bg-yellow-900/30 rounded-sm px-0.5 py-px">
+                                    <p style={{ fontSize: `${calendarSettings.fontSize}px` }} className="text-yellow-800 dark:text-yellow-300 truncate text-left leading-tight">
+                                      {info.memoText}
+                                    </p>
+                                  </div>
+                                );
+                              }
+                              return null;
+                            })}
                           </div>
                         )}
                       </button>
@@ -1499,6 +1552,12 @@ export default function DashboardPage() {
           }}
         />
       )}
+      <CalendarSettingsModal
+        open={settingsModalOpen}
+        onClose={() => setSettingsModalOpen(false)}
+        settings={calendarSettings}
+        onSettingsChange={handleSettingsChange}
+      />
     </AppShell>
   );
 }

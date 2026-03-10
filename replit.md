@@ -56,6 +56,7 @@ middleware.ts           - Next.js middleware (passthrough — auth is client-sid
 - `body_records` - Daily body measurements (user_id, date, weight, skeletal_muscle, body_fat, created_at)
   - Doc ID: `{user_id}_{date}` for deterministic upsert (no duplicates)
 - `memos` - Daily memos (user_id, date, content, show_on_calendar, created_at)
+- `user_settings` - Per-user calendar settings (Doc ID: `{user_id}`, fields: fontSize, displayOrder, showDuration)
 
 ## Muscle Groups (13)
 목, 승모근, 어깨, 가슴, 등, 삼두, 이두, 전완, 복부, 허리, 엉덩이, 하체, 종아리
@@ -92,7 +93,8 @@ middleware.ts           - Next.js middleware (passthrough — auth is client-sid
 - Navigation via `AppShell` (hamburger header) + `SidePanel` (slide-out drawer)
 - Safe area insets handled for iOS notch devices
 - Rest timer: global context (`RestTimerProvider` in `rest-timer-context.tsx`) persists timer across views; `FloatingTimer` shows circular progress button when away from set editor; clicking navigates back to the exercise
-- Calendar cells: show muscle group tags (color-coded), 신체 indicator, memo preview text for each day with data
+- Calendar cells: show muscle group tags (color-coded), 신체 indicator, memo preview text for each day with data; display order and font size configurable via settings modal
+- Calendar settings modal (⚙ button): font size slider (6-10px), display order drag-and-drop (운동/신체/메모), workout duration toggle; persisted per user in Firestore `user_settings` collection; changes apply immediately, debounced save (500ms)
 - Monthly data (memos, body records) fetched via single-field Firestore queries (user_id only) + client-side date prefix filtering to avoid composite index requirement
 - Dashboard detail panel: expandable bottom panel with 3 tabs (운동 목록, 신체정보, 메모)
   - Expands to full screen height (hides AppShell header), collapses with fast 0.2s animation
