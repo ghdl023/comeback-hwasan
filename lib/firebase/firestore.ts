@@ -34,7 +34,9 @@ function serializeDoc<T>(id: string, data: DocumentData): T {
 export async function getUser(uid: string): Promise<AppUser | null> {
   const snap = await getDoc(doc(db, "users", uid));
   if (!snap.exists()) return null;
-  return serializeDoc<AppUser>(snap.id, snap.data());
+  const user = serializeDoc<AppUser>(snap.id, snap.data());
+  if (!user.role) user.role = "user";
+  return user;
 }
 
 export async function upsertUserOnLogin(userData: {
@@ -58,11 +60,17 @@ export async function upsertUserOnLogin(userData: {
     email: userData.email || "",
     display_name: userData.displayName || null,
     photo_url: userData.photoURL || null,
+    role: "user" as const,
     created_at: now,
     last_login_at: now,
   };
   await setDoc(ref, newUser);
   return { ...newUser } as AppUser;
+}
+
+export async function updateUserRole(uid: string, role: "user" | "super_admin"): Promise<void> {
+  const ref = doc(db, "users", uid);
+  await updateDoc(ref, { role });
 }
 
 export async function getExercises(userId: string): Promise<Exercise[]> {

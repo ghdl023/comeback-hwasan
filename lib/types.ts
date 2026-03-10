@@ -1,8 +1,11 @@
+export type UserRole = "user" | "super_admin";
+
 export interface AppUser {
   uid: string;
   email: string;
   display_name: string | null;
   photo_url: string | null;
+  role: UserRole;
   created_at: string;
   last_login_at: string;
 }

@@ -10,7 +10,7 @@ import {
   signOut as firebaseSignOut,
   type User,
 } from "firebase/auth";
-import { upsertUserOnLogin } from "@/lib/firebase/firestore";
+import { upsertUserOnLogin, getUser } from "@/lib/firebase/firestore";
 import type { AppUser } from "@/lib/types";
 
 interface AuthContextType {
@@ -46,6 +46,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [appUser, setAppUser] = useState<AppUser | null>(null);
   const [idToken, setIdToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      getUser(user.uid).then((u) => {
+        if (u) setAppUser(u);
+      }).catch(console.error);
+    }
+  }, [user]);
 
   // TODO: 구글 로그인 인증 복구 후 아래 주석 해제
   // useEffect(() => {

@@ -12,8 +12,11 @@ import {
   X,
 } from "lucide-react";
 
-const menuItems = [
+const baseMenuItems = [
   { href: "/dashboard", label: "홈", icon: Home },
+];
+
+const adminMenuItems = [
   { href: "/exercises", label: "운동 목록", icon: ListChecks },
 ];
 
@@ -24,7 +27,10 @@ interface SidePanelProps {
 
 export function SidePanel({ open, onClose }: SidePanelProps) {
   const pathname = usePathname();
-  const { user, signOut } = useAuth();
+  const { user, appUser, signOut } = useAuth();
+
+  const isSuperAdmin = appUser?.role === "super_admin";
+  const menuItems = isSuperAdmin ? [...baseMenuItems, ...adminMenuItems] : baseMenuItems;
 
   useEffect(() => {
     if (open) {
@@ -77,7 +83,7 @@ export function SidePanel({ open, onClose }: SidePanelProps) {
             {user?.email || ""}
           </p>
           <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5" data-testid="text-panel-grade">
-            일반 회원
+            {isSuperAdmin ? "슈퍼관리자" : "일반 회원"}
           </p>
         </div>
 

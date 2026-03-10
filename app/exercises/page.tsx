@@ -10,6 +10,7 @@ import {
 import type { Exercise, MuscleGroup } from "@/lib/types";
 import { EXERCISE_CATEGORIES, MUSCLE_GROUPS, MUSCLE_GROUP_LABELS } from "@/lib/types";
 import { useEffect, useState, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { AppShell } from "@/components/app-shell";
@@ -35,7 +36,15 @@ import {
 } from "lucide-react";
 
 export default function ExercisesPage() {
-  const { user } = useAuth();
+  const { user, appUser } = useAuth();
+  const router = useRouter();
+  const isSuperAdmin = appUser?.role === "super_admin";
+
+  useEffect(() => {
+    if (appUser && !isSuperAdmin) {
+      router.replace("/dashboard");
+    }
+  }, [appUser, isSuperAdmin, router]);
 
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [loading, setLoading] = useState(true);
@@ -149,12 +158,16 @@ export default function ExercisesPage() {
     return matchSearch && matchCategory;
   });
 
-  if (loading) {
+  if (loading || !appUser) {
     return (
       <div className="flex items-center justify-center py-32">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
+  }
+
+  if (!isSuperAdmin) {
+    return null;
   }
 
   return (

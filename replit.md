@@ -45,7 +45,8 @@ middleware.ts           - Next.js middleware (passthrough — auth is client-sid
 ```
 
 ## Firestore Collections
-- `users` - User profiles (uid, email, display_name, photo_url, created_at, last_login_at)
+- `users` - User profiles (uid, email, display_name, photo_url, role, created_at, last_login_at)
+  - `role`: `"user"` (default) or `"super_admin"`; super_admin can access /exercises (운동 목록) page
 - `exercises` - Exercise library (user_id, name, category, muscle_group, parent_id, created_at)
   - Supports hierarchical 3-depth structure: 대분류(muscle_group) → 중분류(parent, parent_id=null) → 상세운동(child, parent_id=parentDoc.id)
   - `user_id: "system"` for system-wide exercises visible to all users
