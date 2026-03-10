@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import Image from "next/image";
 import { X } from "lucide-react";
 
@@ -9,6 +9,21 @@ export function FloatingQuote() {
   const [currentQuote, setCurrentQuote] = useState<string | null>(null);
   const [visible, setVisible] = useState(false);
   const [fadeOut, setFadeOut] = useState(false);
+
+  const [position, setPosition] = useState({ x: -1, y: -1 });
+  const draggingRef = useRef(false);
+  const dragStartRef = useRef({ x: 0, y: 0, posX: 0, posY: 0 });
+  const hasDraggedRef = useRef(false);
+  const btnRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (position.x === -1 && position.y === -1) {
+      setPosition({
+        x: window.innerWidth - 16 - 56,
+        y: window.innerHeight - 80 - 56,
+      });
+    }
+  }, [position]);
 
   useEffect(() => {
     fetch("/data/quotes.json")
@@ -47,21 +62,79 @@ export function FloatingQuote() {
     }, 300);
   }, []);
 
+  const clampPosition = useCallback((x: number, y: number) => {
+    const size = 56;
+    return {
+      x: Math.max(0, Math.min(window.innerWidth - size, x)),
+      y: Math.max(0, Math.min(window.innerHeight - size, y)),
+    };
+  }, []);
+
+  const handlePointerDown = useCallback(
+    (e: React.PointerEvent) => {
+      draggingRef.current = true;
+      hasDraggedRef.current = false;
+      dragStartRef.current = {
+        x: e.clientX,
+        y: e.clientY,
+        posX: position.x,
+        posY: position.y,
+      };
+      (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    },
+    [position],
+  );
+
+  const handlePointerMove = useCallback(
+    (e: React.PointerEvent) => {
+      if (!draggingRef.current) return;
+      const dx = e.clientX - dragStartRef.current.x;
+      const dy = e.clientY - dragStartRef.current.y;
+      if (Math.abs(dx) > 4 || Math.abs(dy) > 4) {
+        hasDraggedRef.current = true;
+      }
+      const newPos = clampPosition(
+        dragStartRef.current.posX + dx,
+        dragStartRef.current.posY + dy,
+      );
+      setPosition(newPos);
+    },
+    [clampPosition],
+  );
+
+  const handlePointerUp = useCallback(() => {
+    draggingRef.current = false;
+    if (!hasDraggedRef.current) {
+      showRandomQuote();
+    }
+  }, [showRandomQuote]);
+
+  if (position.x === -1) return null;
+
   return (
     <>
-      <button
-        onClick={showRandomQuote}
-        className="fixed bottom-20 right-4 z-50 w-14 h-14 rounded-full shadow-lg hover:shadow-xl transition-shadow bg-white/90 dark:bg-zinc-800/90 backdrop-blur-sm flex items-center justify-center active:scale-95 transition-transform"
+      <div
+        ref={btnRef}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        className="fixed z-50 w-14 h-14 rounded-full shadow-lg hover:shadow-xl bg-white dark:bg-zinc-800 flex items-center justify-center cursor-grab active:cursor-grabbing select-none touch-none"
+        style={{
+          left: position.x,
+          top: position.y,
+          overflow: "hidden",
+        }}
         data-testid="button-floating-quote"
       >
         <Image
           src="/images/청명.png"
           alt="청명"
-          width={40}
-          height={40}
-          className="rounded-full object-cover w-auto h-auto"
+          width={56}
+          height={56}
+          className="w-full h-full object-cover pointer-events-none"
+          draggable={false}
         />
-      </button>
+      </div>
 
       {visible && currentQuote && (
         <div
@@ -85,14 +158,16 @@ export function FloatingQuote() {
               <X className="h-4 w-4 text-muted-foreground" />
             </button>
             <div className="flex items-start gap-3 mb-3">
-              <Image
-                src="/images/청명.png"
-                alt="청명"
-                width={32}
-                height={32}
-                className="rounded-full object-cover shrink-0 mt-0.5 w-auto h-auto"
-              />
-              <span className="text-xs font-semibold text-primary">청명</span>
+              <div className="w-8 h-8 rounded-full overflow-hidden shrink-0 mt-0.5">
+                <Image
+                  src="/images/청명.png"
+                  alt="청명"
+                  width={32}
+                  height={32}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <span className="text-xs font-semibold text-primary mt-2">청명</span>
             </div>
             <p className="text-sm leading-relaxed text-gray-800 dark:text-gray-200 break-keep">
               &ldquo;{currentQuote}&rdquo;
