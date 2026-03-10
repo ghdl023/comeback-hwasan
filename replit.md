@@ -94,6 +94,7 @@ middleware.ts           - Next.js middleware (passthrough — auth is client-sid
 - Navigation via `AppShell` (hamburger header) + `SidePanel` (slide-out drawer)
 - Safe area insets handled for iOS notch devices
 - Rest timer: global context (`RestTimerProvider` in `rest-timer-context.tsx`) persists timer across views; `FloatingTimer` shows circular progress button when away from set editor; clicking navigates back to the exercise
+- Floating quote (청명): `FloatingQuote` component in `client-providers.tsx` shows `public/images/청명.png` as floating button on all screens; clicking shows random quote from `public/data/quotes.json` in animated modal; auto-dismisses after 5s or on close
 - Calendar cells: show muscle group tags (color-coded), 신체 indicator, memo preview text for each day with data; display order and font size configurable via settings modal
 - Calendar settings modal (⚙ button): font size slider (6-10px), display order drag-and-drop (운동/신체/메모), workout duration toggle; persisted per user in Firestore `user_settings` collection; changes apply immediately, debounced save (500ms)
 - Monthly data (memos, body records) fetched via single-field Firestore queries (user_id only) + client-side date prefix filtering to avoid composite index requirement

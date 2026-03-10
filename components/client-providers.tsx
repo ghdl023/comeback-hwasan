@@ -4,6 +4,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { ThemeProvider } from "@/components/theme-provider";
 import { AuthProvider } from "@/components/auth-provider";
 import { RestTimerProvider } from "@/components/rest-timer-context";
+import { FloatingQuote } from "@/components/floating-quote";
 
 export function ClientProviders({ children }: { children: ReactNode }) {
   const [mounted, setMounted] = useState(false);
@@ -17,7 +18,10 @@ export function ClientProviders({ children }: { children: ReactNode }) {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <RestTimerProvider>{children}</RestTimerProvider>
+        <RestTimerProvider>
+          {children}
+          <FloatingQuote />
+        </RestTimerProvider>
       </AuthProvider>
     </ThemeProvider>
   );
