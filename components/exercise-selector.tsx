@@ -275,7 +275,7 @@ export function ExerciseSelector({
         {(existingDayExercises.length > 0 || selected.length > 0) ? (
           <div className="px-3 pt-2.5 pb-2">
             <div className="overflow-x-auto scrollbar-hide">
-              <div className="flex gap-2 pb-2">
+              <div className="flex gap-2 pb-2 pt-2 px-1">
                 {existingDayExercises.map((item) => {
                   const ex = item.exercise;
                   return (
@@ -316,7 +316,7 @@ export function ExerciseSelector({
                     onClick={() => handleRemoveSelected(ex.id)}
                     data-testid={`card-selected-${ex.id}`}
                   >
-                    <div className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center opacity-0 group-hover:opacity-100 group-active:opacity-100 transition-opacity">
+                    <div className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center">
                       <X className="h-2.5 w-2.5" />
                     </div>
                     <p className="text-[9px] text-muted-foreground leading-tight text-center line-clamp-1">
@@ -370,16 +370,16 @@ function MuscleGroupsView({
           onClick={() => onSelect(mg)}
           data-testid={`button-muscle-group-${mg}`}
         >
-          <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-primary/10 shrink-0 overflow-hidden">
+          <div className="flex items-center justify-center w-14 h-14 rounded-xl bg-primary/10 shrink-0 overflow-hidden">
             <img
               src={MUSCLE_GROUP_ICONS[mg]}
               alt={MUSCLE_GROUP_LABELS[mg]}
-              className="w-7 h-7 object-contain"
+              className="w-10 h-10 object-contain"
             />
           </div>
           <div>
             <p className="font-medium text-sm leading-tight">{MUSCLE_GROUP_LABELS[mg]}</p>
-            <p className="text-[10px] text-muted-foreground mt-0.5">
+            <p className="text-xs text-muted-foreground mt-0.5">
               {counts[mg] || 0}개
             </p>
           </div>
