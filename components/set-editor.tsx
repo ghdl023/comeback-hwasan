@@ -335,28 +335,26 @@ export function SetEditor({
         <Button variant="ghost" size="icon" className="h-9 w-9" onClick={handleClose} data-testid="button-set-editor-back">
           <ArrowLeft className="h-5 w-5" />
         </Button>
-        <div className="flex-1 min-w-0">
-          <p className="text-base font-bold leading-tight" data-testid="text-set-editor-date">{date}</p>
-          {dayExercises && dayExercises.length > 1 && (
-            <div
-              className="flex items-center gap-1.5 mt-1.5 cursor-pointer"
-              onClick={() => setExerciseListOpen(true)}
-              data-testid="button-exercise-dots"
-            >
-              {dayExercises.map((de, idx) => (
-                <span
-                  key={de.exerciseId}
-                  className={`rounded-full transition-all ${
-                    idx === currentExerciseIndex
-                      ? "w-2.5 h-2.5 bg-primary"
-                      : "w-2 h-2 bg-muted-foreground/30"
-                  }`}
-                />
-              ))}
-            </div>
-          )}
-        </div>
+        <p className="text-base font-bold leading-tight" data-testid="text-set-editor-date">{date}</p>
       </div>
+
+      {dayExercises && dayExercises.length > 0 && (
+        <div
+          className="flex items-center justify-center gap-2 px-4 py-2.5 border-b shrink-0 cursor-pointer"
+          onClick={() => setExerciseListOpen(true)}
+          data-testid="button-exercise-dots"
+        >
+          {dayExercises.map((de) => (
+            <div key={de.exerciseId} className="flex items-center justify-center">
+              {de.exerciseId === exerciseId ? (
+                <Check className="h-4 w-4 text-primary" />
+              ) : (
+                <Circle className="h-3.5 w-3.5 text-muted-foreground/30" />
+              )}
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="flex-1 flex flex-col overflow-hidden">
         <div className="px-4 py-3 border-b">
@@ -621,39 +619,46 @@ export function SetEditor({
               </Button>
             </div>
             <div className="px-2 pb-4 max-h-[50vh] overflow-y-auto">
-              {dayExercises.map((de, idx) => (
-                <button
-                  key={de.exerciseId}
-                  className={`w-full text-left px-3 py-2.5 rounded-lg text-sm transition-colors flex items-center gap-3 ${
-                    de.exerciseId === exerciseId
-                      ? "bg-primary/10 text-primary font-semibold"
-                      : "hover:bg-muted/50"
-                  }`}
-                  onClick={() => {
-                    if (de.exerciseId !== exerciseId && onSwitchExercise) {
-                      Object.values(saveTimers.current).forEach(clearTimeout);
-                      saveTimers.current = {};
-                      const updatedSets = localSets.filter((ls) => !ls.isNew).map((ls) => ({
-                        id: ls.id,
-                        workout_id: ls.workout_id,
-                        exercise_id: ls.exercise_id,
-                        set_number: ls.set_number,
-                        weight: ls.weight,
-                        reps: ls.reps,
-                        rest_seconds: ls.rest_seconds,
-                        completed: ls.completed,
-                        created_at: sets.find((orig) => orig.id === ls.id)?.created_at || new Date().toISOString(),
-                      }));
-                      onSetsChanged(updatedSets);
-                      onSwitchExercise(de.exerciseId);
-                    }
-                  }}
-                  data-testid={`exercise-list-item-${idx}`}
-                >
-                  <span className={`w-2 h-2 rounded-full shrink-0 ${de.exerciseId === exerciseId ? "bg-primary" : "bg-muted-foreground/30"}`} />
-                  <span className="truncate">{de.name}</span>
-                </button>
-              ))}
+              {dayExercises.map((de, idx) => {
+                const isCurrent = de.exerciseId === exerciseId;
+                return (
+                  <button
+                    key={de.exerciseId}
+                    className={`w-full text-left px-3 py-2.5 rounded-lg text-sm transition-colors flex items-center gap-3 ${
+                      isCurrent
+                        ? "bg-primary/10 text-primary font-semibold"
+                        : "hover:bg-muted/50"
+                    }`}
+                    onClick={() => {
+                      if (!isCurrent && onSwitchExercise) {
+                        Object.values(saveTimers.current).forEach(clearTimeout);
+                        saveTimers.current = {};
+                        const updatedSets = localSets.filter((ls) => !ls.isNew).map((ls) => ({
+                          id: ls.id,
+                          workout_id: ls.workout_id,
+                          exercise_id: ls.exercise_id,
+                          set_number: ls.set_number,
+                          weight: ls.weight,
+                          reps: ls.reps,
+                          rest_seconds: ls.rest_seconds,
+                          completed: ls.completed,
+                          created_at: sets.find((orig) => orig.id === ls.id)?.created_at || new Date().toISOString(),
+                        }));
+                        onSetsChanged(updatedSets);
+                        onSwitchExercise(de.exerciseId);
+                      }
+                    }}
+                    data-testid={`exercise-list-item-${idx}`}
+                  >
+                    {isCurrent ? (
+                      <Check className="h-4 w-4 text-primary shrink-0" />
+                    ) : (
+                      <Circle className="h-3.5 w-3.5 text-muted-foreground/30 shrink-0" />
+                    )}
+                    <span className="truncate">{de.name}</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
         </div>
