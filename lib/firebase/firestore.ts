@@ -311,6 +311,18 @@ export async function saveBodyRecord(
   return { id: docId, ...data, created_at: now };
 }
 
+export async function getLatestBodyRecord(userId: string): Promise<BodyRecord | null> {
+  const q = query(
+    collection(db, "body_records"),
+    where("user_id", "==", userId)
+  );
+  const snap = await getDocs(q);
+  if (snap.empty) return null;
+  const records = snap.docs.map((d) => serializeDoc<BodyRecord>(d.id, d.data()));
+  records.sort((a, b) => b.date.localeCompare(a.date));
+  return records[0];
+}
+
 export async function getBodyRecordsByMonth(
   userId: string,
   year: number,

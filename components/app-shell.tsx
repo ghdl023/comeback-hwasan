@@ -20,11 +20,11 @@ export function AppShell({ children, showHeader = true, headerCenter, headerRigh
       <SidePanel open={sidePanelOpen} onClose={() => setSidePanelOpen(false)} />
 
       {showHeader && (
-        <div className="flex items-center justify-between px-4 py-2.5 border-b bg-background shrink-0 safe-area-top">
+        <div className="flex items-center justify-between px-3 pt-4 pb-2.5 border-b bg-background shrink-0 safe-area-top">
           <Button
             variant="ghost"
             size="icon"
-            className="h-8 w-8"
+            className="h-8 w-8 shrink-0"
             onClick={() => setSidePanelOpen(true)}
             data-testid="button-side-nav"
           >
@@ -35,7 +35,7 @@ export function AppShell({ children, showHeader = true, headerCenter, headerRigh
             {headerCenter}
           </div>
 
-          <div className="w-8 flex items-center justify-end">
+          <div className="shrink-0">
             {headerRight}
           </div>
         </div>

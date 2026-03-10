@@ -16,6 +16,7 @@ import {
   deleteExerciseSetsFromWorkouts,
   getMemosByUserMonth,
   getBodyRecordsByMonth,
+  getLatestBodyRecord,
 } from "@/lib/firebase/firestore";
 import type { Workout, WorkoutSet, Exercise, MuscleGroup, Memo, BodyRecord } from "@/lib/types";
 import { MUSCLE_GROUP_LABELS } from "@/lib/types";
@@ -49,6 +50,8 @@ import {
   StickyNote,
   Check,
   Trash2,
+  Activity,
+  ClipboardList,
 } from "lucide-react";
 
 type DetailTab = "exercises" | "body" | "memo";
@@ -147,11 +150,18 @@ export default function DashboardPage() {
     setSkeletalMuscle("");
     setBodyFat("");
     getBodyRecord(user.uid, selectedDateStr)
-      .then((body) => {
+      .then(async (body) => {
         if (body) {
           setBodyWeight(body.weight?.toString() || "");
           setSkeletalMuscle(body.skeletal_muscle?.toString() || "");
           setBodyFat(body.body_fat?.toString() || "");
+        } else {
+          const latest = await getLatestBodyRecord(user.uid);
+          if (latest) {
+            setBodyWeight(latest.weight?.toString() || "");
+            setSkeletalMuscle(latest.skeletal_muscle?.toString() || "");
+            setBodyFat(latest.body_fat?.toString() || "");
+          }
         }
       })
       .catch((err) => console.error("Body record fetch error:", err));
@@ -671,7 +681,7 @@ export default function DashboardPage() {
 
   const detailHeader = (
     <div
-      className={`flex items-center justify-between px-4 py-2 bg-background cursor-pointer shrink-0 ${detailOpen ? "safe-area-top" : ""}`}
+      className={`flex items-center justify-between px-4 py-2 bg-background cursor-pointer shrink-0 ${detailOpen ? "safe-area-top pt-4" : ""}`}
       onClick={handleToggleDetail}
       data-testid="button-toggle-detail"
     >
@@ -718,67 +728,57 @@ export default function DashboardPage() {
   const tabBar = (
     <div className="flex border-t shrink-0 bg-background safe-area-bottom" data-testid="detail-tab-bar">
       {([
-        { key: "exercises" as DetailTab, label: "운동 목록" },
-        { key: "body" as DetailTab, label: "신체정보" },
-        { key: "memo" as DetailTab, label: "메모" },
-      ]).map((tab) => (
-        <button
-          key={tab.key}
-          className={`flex-1 py-2.5 text-xs font-medium text-center transition-colors ${
-            activeTab === tab.key
-              ? "text-primary border-t-2 border-primary -mt-px"
-              : "text-muted-foreground"
-          }`}
-          onClick={() => setActiveTab(tab.key)}
-          data-testid={`tab-${tab.key}`}
-        >
-          {tab.label}
-        </button>
-      ))}
+        { key: "exercises" as DetailTab, label: "운동", icon: Dumbbell },
+        { key: "body" as DetailTab, label: "신체", icon: Activity },
+        { key: "memo" as DetailTab, label: "메모", icon: ClipboardList },
+      ]).map((tab) => {
+        const Icon = tab.icon;
+        return (
+          <button
+            key={tab.key}
+            className={`flex-1 py-2 text-[11px] font-medium text-center transition-colors flex flex-col items-center gap-0.5 ${
+              activeTab === tab.key
+                ? "text-primary border-t-2 border-primary -mt-px"
+                : "text-muted-foreground"
+            }`}
+            onClick={() => setActiveTab(tab.key)}
+            data-testid={`tab-${tab.key}`}
+          >
+            <Icon className="h-4 w-4" />
+            {tab.label}
+          </button>
+        );
+      })}
     </div>
   );
 
   const exercisesTab = (
     <div className="flex-1 overflow-y-auto scrollbar-hide">
       <div className="px-4 py-4 space-y-4">
-        {totalSets === 0 ? (
-          <Card className="p-8 text-center space-y-3">
-            <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-muted mx-auto">
-              <Dumbbell className="h-7 w-7 text-muted-foreground" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold">운동을 추가해주세요</p>
-              <p className="text-xs text-muted-foreground mt-1">아래 버튼을 눌러 운동을 기록하세요</p>
-            </div>
-            <Button className="gap-2" onClick={() => setExerciseSelectorOpen(true)} data-testid="button-add-workout-empty">
-              <Plus className="h-4 w-4" /> 운동 추가
-            </Button>
-          </Card>
-        ) : (
-          <>
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <h2 className="text-sm font-bold" data-testid="text-section-title">운동 기록</h2>
-                {totalDuration > 0 && (
-                  <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                    <Clock className="h-3 w-3" />{totalDuration}분
-                  </span>
-                )}
-              </div>
-              <div className="flex items-center gap-3 text-xs text-muted-foreground mb-3">
-                <span className="flex items-center gap-1"><Dumbbell className="h-3 w-3" />{totalSets}세트</span>
-                <span className="flex items-center gap-1">
-                  <Weight className="h-3 w-3" />
-                  {totalVolume > 0 ? (totalVolume >= 1000 ? `${(totalVolume / 1000).toFixed(1)}t` : `${totalVolume.toLocaleString()}kg`) : "0kg"}
-                </span>
-              </div>
-              <Button variant="outline" size="sm" className="gap-1.5 mb-3 h-7 text-xs"
-                onClick={() => setExerciseSelectorOpen(true)} data-testid="button-add-more-workout">
-                <Plus className="h-3.5 w-3.5" /> 운동 추가
-              </Button>
-            </div>
-            <div className="space-y-3">
-              {Object.entries(groupedByExercise).sort(([, aSets], [, bSets]) => {
+        <div>
+          <div className="flex items-center justify-between mb-2">
+            <h2 className="text-sm font-bold" data-testid="text-section-title">운동 기록</h2>
+            {totalDuration > 0 && (
+              <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                <Clock className="h-3 w-3" />{totalDuration}분
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-3 text-xs text-muted-foreground mb-3">
+            <span className="flex items-center gap-1"><Dumbbell className="h-3 w-3" />{totalSets}세트</span>
+            <span className="flex items-center gap-1">
+              <Weight className="h-3 w-3" />
+              {totalVolume > 0 ? (totalVolume >= 1000 ? `${(totalVolume / 1000).toFixed(1)}t` : `${totalVolume.toLocaleString()}kg`) : "0kg"}
+            </span>
+          </div>
+          <Button variant="outline" size="sm" className="gap-1.5 mb-3 h-7 text-xs"
+            onClick={() => setExerciseSelectorOpen(true)} data-testid="button-add-more-workout">
+            <Plus className="h-3.5 w-3.5" /> 운동 추가
+          </Button>
+        </div>
+        {totalSets > 0 && (
+          <div className="space-y-3">
+            {Object.entries(groupedByExercise).sort(([, aSets], [, bSets]) => {
                 const aMin = Math.min(...aSets.map(s => new Date(s.created_at).getTime()));
                 const bMin = Math.min(...bSets.map(s => new Date(s.created_at).getTime()));
                 return aMin - bMin;
@@ -848,8 +848,7 @@ export default function DashboardPage() {
                   </Card>
                 );
               })}
-            </div>
-          </>
+          </div>
         )}
       </div>
     </div>
