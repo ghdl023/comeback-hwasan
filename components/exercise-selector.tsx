@@ -9,7 +9,11 @@ import {
   getExerciseCountsByMuscleGroup,
 } from "@/lib/firebase/firestore";
 import type { Exercise, MuscleGroup } from "@/lib/types";
-import { MUSCLE_GROUPS, MUSCLE_GROUP_LABELS, MUSCLE_GROUP_ICONS } from "@/lib/types";
+import {
+  MUSCLE_GROUPS,
+  MUSCLE_GROUP_LABELS,
+  MUSCLE_GROUP_ICONS,
+} from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -35,6 +39,7 @@ interface ExerciseSelectorProps {
   onAddExercise?: () => void;
   initialSelected?: Exercise[];
   existingDayExercises?: ExistingDayExercise[];
+  onBackRef?: React.MutableRefObject<(() => boolean) | null>;
 }
 
 type ViewLevel = "muscle_groups" | "exercises" | "sub_exercises";
@@ -52,6 +57,7 @@ export function ExerciseSelector({
   onAddExercise,
   initialSelected = [],
   existingDayExercises = [],
+  onBackRef,
 }: ExerciseSelectorProps) {
   const { user } = useAuth();
   const [nav, setNav] = useState<NavigationState>({ level: "muscle_groups" });
@@ -59,7 +65,9 @@ export function ExerciseSelector({
   const [selected, setSelected] = useState<Exercise[]>(initialSelected);
   const [exercises, setExercises] = useState<Exercise[]>([]);
   const [allExercises, setAllExercises] = useState<Exercise[]>([]);
-  const [muscleGroupCounts, setMuscleGroupCounts] = useState<Record<string, number>>({});
+  const [muscleGroupCounts, setMuscleGroupCounts] = useState<
+    Record<string, number>
+  >({});
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -124,7 +132,11 @@ export function ExerciseSelector({
   };
 
   const handleExerciseClick = (exercise: Exercise) => {
-    setNav({ level: "sub_exercises", muscleGroup: nav.muscleGroup, parentExercise: exercise });
+    setNav({
+      level: "sub_exercises",
+      muscleGroup: nav.muscleGroup,
+      parentExercise: exercise,
+    });
     loadChildExercises(exercise);
   };
 
@@ -158,6 +170,23 @@ export function ExerciseSelector({
     }
   };
 
+  useEffect(() => {
+    if (!onBackRef) return;
+    const searching = searchQuery.trim().length > 0;
+    onBackRef.current = () => {
+      if (searching) {
+        setSearchQuery("");
+        return true;
+      }
+      if (nav.level === "sub_exercises" || nav.level === "exercises") {
+        handleBack();
+        return true;
+      }
+      return false;
+    };
+    return () => { onBackRef.current = null; };
+  }, [nav, searchQuery]);
+
   const handleConfirm = () => {
     onSelect(selected);
     onClose();
@@ -186,13 +215,22 @@ export function ExerciseSelector({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 bg-background flex flex-col" data-testid="exercise-selector">
-      <div className="flex items-center gap-2 px-3 pt-4 pb-2.5 border-b bg-background shrink-0 safe-area-top">
+    <div
+      className="fixed inset-0 z-50 bg-background flex flex-col"
+      data-testid="exercise-selector"
+    >
+      <div className="flex items-center gap-2 mt-3 px-3 pt-4 pb-2.5 border-b bg-background shrink-0 safe-area-top">
         <Button
           variant="ghost"
           size="icon"
           className="shrink-0 h-9 w-9"
-          onClick={isSearching ? () => setSearchQuery("") : nav.level === "muscle_groups" ? onClose : handleBack}
+          onClick={
+            isSearching
+              ? () => setSearchQuery("")
+              : nav.level === "muscle_groups"
+                ? onClose
+                : handleBack
+          }
           data-testid="button-selector-back"
         >
           <ArrowLeft className="h-5 w-5" />
@@ -272,7 +310,7 @@ export function ExerciseSelector({
       </div>
 
       <div className="border-t bg-background shrink-0 safe-area-bottom">
-        {(existingDayExercises.length > 0 || selected.length > 0) ? (
+        {existingDayExercises.length > 0 || selected.length > 0 ? (
           <div className="px-3 pt-2.5 pb-2">
             <div className="overflow-x-auto scrollbar-hide">
               <div className="flex gap-2 pb-2 pt-2 px-1">
@@ -295,43 +333,59 @@ export function ExerciseSelector({
                       )}
                       <p className="text-[9px] text-muted-foreground leading-tight text-center line-clamp-1">
                         {ex.muscle_group
-                          ? MUSCLE_GROUP_LABELS[ex.muscle_group as MuscleGroup] || ex.muscle_group
+                          ? MUSCLE_GROUP_LABELS[
+                              ex.muscle_group as MuscleGroup
+                            ] || ex.muscle_group
                           : "-"}
                       </p>
-                      <p className={`text-[10px] font-medium leading-tight text-center line-clamp-2 ${item.completed ? "text-muted-foreground" : ""}`}>
+                      <p
+                        className={`text-[10px] font-medium leading-tight text-center line-clamp-2 ${item.completed ? "text-muted-foreground" : ""}`}
+                      >
                         {ex.name}
                       </p>
                       {item.completed && (
-                        <p className="text-[8px] text-primary font-semibold">완료</p>
+                        <p className="text-[8px] text-primary font-semibold">
+                          완료
+                        </p>
                       )}
                     </div>
                   );
                 })}
                 {selected
-                  .filter((ex) => !existingDayExercises.some((e) => e.exercise.id === ex.id))
+                  .filter(
+                    (ex) =>
+                      !existingDayExercises.some(
+                        (e) => e.exercise.id === ex.id,
+                      ),
+                  )
                   .map((ex) => (
-                  <button
-                    key={ex.id}
-                    className="shrink-0 w-16 h-16 rounded-lg border border-primary/40 bg-primary/5 shadow-sm flex flex-col items-center justify-center gap-0.5 p-1 relative group"
-                    onClick={() => handleRemoveSelected(ex.id)}
-                    data-testid={`card-selected-${ex.id}`}
-                  >
-                    <div className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center">
-                      <X className="h-2.5 w-2.5" />
-                    </div>
-                    <p className="text-[9px] text-muted-foreground leading-tight text-center line-clamp-1">
-                      {ex.muscle_group
-                        ? MUSCLE_GROUP_LABELS[ex.muscle_group as MuscleGroup] || ex.muscle_group
-                        : "-"}
-                    </p>
-                    <p className="text-[10px] font-medium leading-tight text-center line-clamp-2">
-                      {ex.name}
-                    </p>
-                  </button>
-                ))}
+                    <button
+                      key={ex.id}
+                      className="shrink-0 w-16 h-16 rounded-lg border border-primary/40 bg-primary/5 shadow-sm flex flex-col items-center justify-center gap-0.5 p-1 relative group"
+                      onClick={() => handleRemoveSelected(ex.id)}
+                      data-testid={`card-selected-${ex.id}`}
+                    >
+                      <div className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-destructive text-destructive-foreground flex items-center justify-center">
+                        <X className="h-2.5 w-2.5" />
+                      </div>
+                      <p className="text-[9px] text-muted-foreground leading-tight text-center line-clamp-1">
+                        {ex.muscle_group
+                          ? MUSCLE_GROUP_LABELS[
+                              ex.muscle_group as MuscleGroup
+                            ] || ex.muscle_group
+                          : "-"}
+                      </p>
+                      <p className="text-[10px] font-medium leading-tight text-center line-clamp-2">
+                        {ex.name}
+                      </p>
+                    </button>
+                  ))}
               </div>
             </div>
-            {selected.filter((ex) => !existingDayExercises.some((e) => e.exercise.id === ex.id)).length > 0 && (
+            {selected.filter(
+              (ex) =>
+                !existingDayExercises.some((e) => e.exercise.id === ex.id),
+            ).length > 0 && (
               <div className="flex justify-end">
                 <Button
                   size="sm"
@@ -378,7 +432,9 @@ function MuscleGroupsView({
             />
           </div>
           <div>
-            <p className="font-medium text-sm leading-tight">{MUSCLE_GROUP_LABELS[mg]}</p>
+            <p className="font-medium text-sm leading-tight">
+              {MUSCLE_GROUP_LABELS[mg]}
+            </p>
             <p className="text-xs text-muted-foreground mt-0.5">
               {counts[mg] || 0}개
             </p>
@@ -411,7 +467,9 @@ function ExerciseListView({
           <Dumbbell className="h-6 w-6 text-muted-foreground" />
         </div>
         <p className="text-sm text-muted-foreground">등록된 운동이 없습니다</p>
-        <p className="text-xs text-muted-foreground mt-1">운동목록에서 운동을 추가해주세요</p>
+        <p className="text-xs text-muted-foreground mt-1">
+          운동목록에서 운동을 추가해주세요
+        </p>
       </div>
     );
   }
@@ -441,11 +499,15 @@ function ExerciseListView({
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate">{ex.name}</p>
                 {ex.category && (
-                  <p className="text-xs text-muted-foreground mt-0.5">{ex.category}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {ex.category}
+                  </p>
                 )}
               </div>
               {isExisting ? (
-                <span className="text-xs text-muted-foreground shrink-0">추가됨</span>
+                <span className="text-xs text-muted-foreground shrink-0">
+                  추가됨
+                </span>
               ) : showChevron ? (
                 <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
               ) : null}
@@ -466,8 +528,18 @@ function ExerciseListView({
                   }`}
                 >
                   {isSelected && (
-                    <svg className="w-3 h-3 text-primary-foreground" viewBox="0 0 12 12" fill="none">
-                      <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    <svg
+                      className="w-3 h-3 text-primary-foreground"
+                      viewBox="0 0 12 12"
+                      fill="none"
+                    >
+                      <path
+                        d="M2 6l3 3 5-5"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
                     </svg>
                   )}
                 </div>
@@ -509,7 +581,9 @@ function SearchResultsView({
           <button
             key={ex.id}
             className={`w-full flex items-center gap-3 px-4 py-3.5 hover:bg-muted/50 active:bg-muted transition-colors text-left ${isExisting ? "opacity-50" : ""}`}
-            onClick={() => { if (!isExisting) onSelect(ex); }}
+            onClick={() => {
+              if (!isExisting) onSelect(ex);
+            }}
             data-testid={`button-search-result-${ex.id}`}
           >
             <div className="flex-1 min-w-0">
@@ -517,16 +591,21 @@ function SearchResultsView({
               <div className="flex items-center gap-2 mt-0.5">
                 {ex.muscle_group && (
                   <span className="text-xs text-muted-foreground">
-                    {MUSCLE_GROUP_LABELS[ex.muscle_group as MuscleGroup] || ex.muscle_group}
+                    {MUSCLE_GROUP_LABELS[ex.muscle_group as MuscleGroup] ||
+                      ex.muscle_group}
                   </span>
                 )}
                 {ex.category && (
-                  <span className="text-xs text-muted-foreground">{ex.category}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {ex.category}
+                  </span>
                 )}
               </div>
             </div>
             {isExisting ? (
-              <span className="text-xs text-muted-foreground shrink-0">추가됨</span>
+              <span className="text-xs text-muted-foreground shrink-0">
+                추가됨
+              </span>
             ) : (
               <div
                 className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all shrink-0 ${
@@ -536,8 +615,18 @@ function SearchResultsView({
                 }`}
               >
                 {isSelected && (
-                  <svg className="w-3 h-3 text-primary-foreground" viewBox="0 0 12 12" fill="none">
-                    <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  <svg
+                    className="w-3 h-3 text-primary-foreground"
+                    viewBox="0 0 12 12"
+                    fill="none"
+                  >
+                    <path
+                      d="M2 6l3 3 5-5"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
                   </svg>
                 )}
               </div>

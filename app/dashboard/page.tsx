@@ -131,6 +131,64 @@ export default function DashboardPage() {
   const [setEditExerciseId, setSetEditExerciseId] = useState<string | null>(
     null,
   );
+  const exerciseSelectorBackRef = useRef<(() => boolean) | null>(null);
+
+  const prevDetailRef = useRef(false);
+  const prevSelectorRef = useRef(false);
+  const prevSetEditorRef = useRef<string | null>(null);
+  const isPopStateRef = useRef(false);
+
+  useEffect(() => {
+    if (isPopStateRef.current) {
+      isPopStateRef.current = false;
+      prevDetailRef.current = detailOpen;
+      prevSelectorRef.current = exerciseSelectorOpen;
+      prevSetEditorRef.current = setEditExerciseId;
+      return;
+    }
+
+    if (detailOpen && !prevDetailRef.current) {
+      window.history.pushState({ view: "detail" }, "");
+    }
+    if (exerciseSelectorOpen && !prevSelectorRef.current) {
+      window.history.pushState({ view: "selector" }, "");
+    }
+    if (setEditExerciseId && !prevSetEditorRef.current) {
+      window.history.pushState({ view: "setEditor" }, "");
+    }
+
+    prevDetailRef.current = detailOpen;
+    prevSelectorRef.current = exerciseSelectorOpen;
+    prevSetEditorRef.current = setEditExerciseId;
+  }, [detailOpen, exerciseSelectorOpen, setEditExerciseId]);
+
+  useEffect(() => {
+    window.history.replaceState({ view: "root" }, "");
+
+    const handlePopState = () => {
+      isPopStateRef.current = true;
+
+      if (setEditExerciseId) {
+        setSetEditExerciseId(null);
+      } else if (exerciseSelectorOpen) {
+        if (exerciseSelectorBackRef.current) {
+          const handled = exerciseSelectorBackRef.current();
+          if (handled) {
+            window.history.pushState({ view: "selectorInner" }, "");
+            return;
+          }
+        }
+        setExerciseSelectorOpen(false);
+      } else if (detailOpen) {
+        setDetailOpen(false);
+      } else {
+        window.history.pushState({ view: "root" }, "");
+      }
+    };
+
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, [detailOpen, exerciseSelectorOpen, setEditExerciseId]);
 
   useEffect(() => {
     if (!user) {
@@ -1385,6 +1443,7 @@ export default function DashboardPage() {
         onClose={() => setExerciseSelectorOpen(false)}
         onSelect={handleExercisesSelected}
         existingDayExercises={existingDayExercises}
+        onBackRef={exerciseSelectorBackRef}
       />
       {!setEditExerciseId && timerState.mode === "running" && timerTarget && (
         <FloatingTimer
