@@ -1,0 +1,31 @@
+신규
+
+
+큐레이터
+- Curated News 목록
+- Curator Plan 목록
+- Curator Plan 생성
+- Curator Plan 수정(상세)
+
+뉴스레터(매니저관리)
+- 목록
+- 생성(+에디터AI기능)
+- 수정(+에디터AI기능)
+- 미리보기
+
+뉴스레터(사용자)
+-목록
+-상세
+
+기존
+뉴스피드
+- 뉴스피드 생성시 에디터 AI 기능
+
+
+
+
+Report 내용 추가 ?
+
+ReportSutido, Portal Guide 생성형ai연동 묶어야할지?
+
+기능 담당 나누기

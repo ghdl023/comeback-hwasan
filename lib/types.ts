@@ -97,6 +97,22 @@ export const MUSCLE_GROUP_LABELS: Record<MuscleGroup, string> = {
   calves: "종아리",
 };
 
+export const MUSCLE_GROUP_ICONS: Record<MuscleGroup, string> = {
+  neck: "/images/목.png",
+  traps: "/images/승모근.png",
+  shoulders: "/images/어깨.png",
+  chest: "/images/가슴.png",
+  back: "/images/등.png",
+  triceps: "/images/삼두.png",
+  biceps: "/images/이두.png",
+  forearms: "/images/전완.png",
+  abs: "/images/복부.png",
+  lower_back: "/images/허리.png",
+  glutes: "/images/엉덩이.png",
+  legs: "/images/하체.png",
+  calves: "/images/종아리.png",
+};
+
 
 export const EXERCISE_CATEGORIES = [
   "barbell",

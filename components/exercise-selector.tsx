@@ -9,7 +9,7 @@ import {
   getExerciseCountsByMuscleGroup,
 } from "@/lib/firebase/firestore";
 import type { Exercise, MuscleGroup } from "@/lib/types";
-import { MUSCLE_GROUPS, MUSCLE_GROUP_LABELS } from "@/lib/types";
+import { MUSCLE_GROUPS, MUSCLE_GROUP_LABELS, MUSCLE_GROUP_ICONS } from "@/lib/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -370,8 +370,12 @@ function MuscleGroupsView({
           onClick={() => onSelect(mg)}
           data-testid={`button-muscle-group-${mg}`}
         >
-          <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-primary/10 shrink-0">
-            <Dumbbell className="h-5 w-5 text-primary" />
+          <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-primary/10 shrink-0 overflow-hidden">
+            <img
+              src={MUSCLE_GROUP_ICONS[mg]}
+              alt={MUSCLE_GROUP_LABELS[mg]}
+              className="w-7 h-7 object-contain"
+            />
           </div>
           <div>
             <p className="font-medium text-sm leading-tight">{MUSCLE_GROUP_LABELS[mg]}</p>
