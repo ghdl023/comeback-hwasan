@@ -59,6 +59,7 @@ import {
   Trash2,
   Activity,
   ClipboardList,
+  CircleCheck,
 } from "lucide-react";
 
 type DetailTab = "exercises" | "body" | "memo";
@@ -988,6 +989,8 @@ export default function DashboardPage() {
               .map(([exerciseId, exSets]) => {
                 const exercise = exerciseMap.get(exerciseId);
                 const isExpanded = expandedExercises.has(exerciseId);
+                const completedCount = exSets.filter((s) => s.completed).length;
+                const allCompleted = completedCount === exSets.length && exSets.length > 0;
                 return (
                   <Card
                     key={exerciseId}
@@ -999,8 +1002,12 @@ export default function DashboardPage() {
                       onClick={() => setSetEditExerciseId(exerciseId)}
                       data-testid={`button-exercise-card-${exerciseId}`}
                     >
-                      <div className="flex items-center justify-center w-7 h-7 rounded-lg bg-primary/10 shrink-0">
-                        <Dumbbell className="h-3.5 w-3.5 text-primary" />
+                      <div className={`flex items-center justify-center w-7 h-7 rounded-lg shrink-0 ${allCompleted ? "bg-emerald-500/10" : "bg-primary/10"}`}>
+                        {allCompleted ? (
+                          <CircleCheck className="h-4 w-4 text-emerald-500" />
+                        ) : (
+                          <Dumbbell className="h-3.5 w-3.5 text-primary" />
+                        )}
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">
@@ -1018,7 +1025,9 @@ export default function DashboardPage() {
                             </Badge>
                           )}
                           <span className="text-[10px] text-muted-foreground">
-                            {exSets.length}세트
+                            {allCompleted
+                              ? `${exSets.length}세트`
+                              : `${completedCount} / ${exSets.length}세트`}
                           </span>
                         </div>
                       </div>
