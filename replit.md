@@ -11,7 +11,7 @@ Primary target: mobile devices (mobile-first responsive design with bottom tab n
 - **Language**: TypeScript
 - **Styling**: Tailwind CSS + shadcn/ui components
 - **Backend**: Firebase (Firestore for data, Firebase Auth for authentication)
-- **Auth**: Google OAuth popup via Firebase Auth (client-side only)
+- **Auth**: 임시 이메일 로그인 (Firestore users 테이블 기반) — 구글 OAuth 복구 시 전환 예정
 - **Deployment Target**: Vercel (frontend-only)
 
 ## Project Structure

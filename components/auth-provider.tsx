@@ -10,7 +10,7 @@ import {
   signOut as firebaseSignOut,
   type User,
 } from "firebase/auth";
-import { upsertUserOnLogin, getUser } from "@/lib/firebase/firestore";
+import { upsertUserOnLogin, getUser, getUserByEmail } from "@/lib/firebase/firestore";
 import type { AppUser } from "@/lib/types";
 
 interface AuthContextType {
@@ -19,6 +19,7 @@ interface AuthContextType {
   idToken: string | null;
   loading: boolean;
   signInWithGoogle: () => Promise<void>;
+  signInWithEmail: (email: string) => Promise<AppUser>;
   signOut: () => Promise<void>;
 }
 
@@ -28,32 +29,42 @@ const AuthContext = createContext<AuthContextType>({
   idToken: null,
   loading: true,
   signInWithGoogle: async () => {},
+  signInWithEmail: async () => { throw new Error("not ready"); },
   signOut: async () => {},
 });
 
 const googleProvider = new GoogleAuthProvider();
 
-// TODO: 구글 로그인 인증 복구 후 임시 유저 제거하고 원래 로직 복원
-const TEMP_MOCK_USER = {
-  uid: "iLuP5PoNCTdgihjou4QbESZHb0b2",
-  email: "sksmsdirjsdnl@gmail.com",
-  displayName: "문이열리네요그대가들어오죠",
-  photoURL: "https://lh3.googleusercontent.com/a/ACg8ocL6ntv6KyLPGsndK5JmFzCqKVdrKTJVLZtPFxUI2tonhMv-VLc=s96-c",
-} as unknown as User;
+// TODO: 구글 로그인 인증 복구 후 임시 이메일 로그인 제거하고 원래 로직 복원
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(TEMP_MOCK_USER);
+  const [user, setUser] = useState<User | null>(null);
   const [appUser, setAppUser] = useState<AppUser | null>(null);
   const [idToken, setIdToken] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (user) {
-      getUser(user.uid).then((u) => {
-        if (u) setAppUser(u);
-      }).catch(console.error);
+    const savedUid = sessionStorage.getItem("temp_auth_uid");
+    if (savedUid) {
+      getUser(savedUid).then((u) => {
+        if (u) {
+          const mockUser = {
+            uid: u.uid,
+            email: u.email,
+            displayName: u.display_name,
+            photoURL: u.photo_url,
+          } as unknown as User;
+          setUser(mockUser);
+          setAppUser(u);
+        }
+        setLoading(false);
+      }).catch(() => {
+        setLoading(false);
+      });
+    } else {
+      setLoading(false);
     }
-  }, [user]);
+  }, []);
 
   // TODO: 구글 로그인 인증 복구 후 아래 주석 해제
   // useEffect(() => {
@@ -92,10 +103,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   //   return () => clearInterval(interval);
   // }, [idToken]);
 
+  const signInWithEmail = useCallback(async (email: string): Promise<AppUser> => {
+    const foundUser = await getUserByEmail(email.trim().toLowerCase());
+    if (!foundUser) {
+      throw new Error("등록되지 않은 이메일입니다.");
+    }
+    const mockUser = {
+      uid: foundUser.uid,
+      email: foundUser.email,
+      displayName: foundUser.display_name,
+      photoURL: foundUser.photo_url,
+    } as unknown as User;
+    setUser(mockUser);
+    setAppUser(foundUser);
+    sessionStorage.setItem("temp_auth_uid", foundUser.uid);
+    return foundUser;
+  }, []);
+
   const signInWithGoogle = useCallback(async () => {
-    // 임시: mock 유저 사용
-    setUser(TEMP_MOCK_USER);
-    setLoading(false);
+    // TODO: 구글 로그인 인증 복구 후 아래 주석 해제
     // try {
     //   const result = await signInWithPopup(auth, googleProvider);
     //   const firebaseUser = result.user;
@@ -115,16 +141,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signOut = useCallback(async () => {
-    // 임시: mock 유저이므로 state만 초기화
     setUser(null);
     setAppUser(null);
     setIdToken(null);
+    sessionStorage.removeItem("temp_auth_uid");
     window.location.href = "/login";
+    // TODO: 구글 로그인 인증 복구 후 아래 주석 해제
     // await firebaseSignOut(auth);
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, appUser, idToken, loading, signInWithGoogle, signOut }}>
+    <AuthContext.Provider value={{ user, appUser, idToken, loading, signInWithGoogle, signInWithEmail, signOut }}>
       {children}
     </AuthContext.Provider>
   );

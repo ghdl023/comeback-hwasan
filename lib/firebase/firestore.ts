@@ -39,6 +39,19 @@ export async function getUser(uid: string): Promise<AppUser | null> {
   return user;
 }
 
+export async function getUserByEmail(email: string): Promise<AppUser | null> {
+  const q = query(
+    collection(db, "users"),
+    where("email", "==", email),
+    firestoreLimit(1)
+  );
+  const snap = await getDocs(q);
+  if (snap.empty) return null;
+  const user = serializeDoc<AppUser>(snap.docs[0].id, snap.docs[0].data());
+  if (!user.role) user.role = "user";
+  return user;
+}
+
 export async function upsertUserOnLogin(userData: {
   uid: string;
   email: string | null;
