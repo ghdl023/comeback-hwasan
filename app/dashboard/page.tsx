@@ -114,7 +114,10 @@ export default function DashboardPage() {
   const [setEditExerciseId, setSetEditExerciseId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!user) return;
+    if (!user) {
+      setLoading(false);
+      return;
+    }
     const fetchData = async () => {
       try {
         const [w, s, e] = await Promise.all([
