@@ -12,7 +12,12 @@ interface AppShellProps {
   headerRight?: ReactNode;
 }
 
-export function AppShell({ children, showHeader = true, headerCenter, headerRight }: AppShellProps) {
+export function AppShell({
+  children,
+  showHeader = true,
+  headerCenter,
+  headerRight,
+}: AppShellProps) {
   const [sidePanelOpen, setSidePanelOpen] = useState(false);
 
   return (
@@ -20,7 +25,7 @@ export function AppShell({ children, showHeader = true, headerCenter, headerRigh
       <SidePanel open={sidePanelOpen} onClose={() => setSidePanelOpen(false)} />
 
       {showHeader && (
-        <div className="flex items-center justify-between px-3 pt-8 pb-2.5 border-b bg-background shrink-0 safe-area-top">
+        <div className="flex items-center justify-between mt-3 px-3 pt-8 pb-2.5 border-b bg-background shrink-0 safe-area-top">
           <Button
             variant="ghost"
             size="icon"
@@ -35,15 +40,11 @@ export function AppShell({ children, showHeader = true, headerCenter, headerRigh
             {headerCenter}
           </div>
 
-          <div className="shrink-0">
-            {headerRight}
-          </div>
+          <div className="shrink-0">{headerRight}</div>
         </div>
       )}
 
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {children}
-      </div>
+      <div className="flex-1 flex flex-col overflow-hidden">{children}</div>
     </div>
   );
 }

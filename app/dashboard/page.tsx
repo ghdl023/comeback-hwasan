@@ -18,7 +18,14 @@ import {
   getBodyRecordsByMonth,
   getLatestBodyRecord,
 } from "@/lib/firebase/firestore";
-import type { Workout, WorkoutSet, Exercise, MuscleGroup, Memo, BodyRecord } from "@/lib/types";
+import type {
+  Workout,
+  WorkoutSet,
+  Exercise,
+  MuscleGroup,
+  Memo,
+  BodyRecord,
+} from "@/lib/types";
 import { MUSCLE_GROUP_LABELS } from "@/lib/types";
 import { useEffect, useState, useMemo, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
@@ -111,10 +118,16 @@ export default function DashboardPage() {
   const [memoSaving, setMemoSaving] = useState(false);
   const [editingMemo, setEditingMemo] = useState<Memo | null>(null);
   const [monthlyMemos, setMonthlyMemos] = useState<Memo[]>([]);
-  const [monthlyBodyRecords, setMonthlyBodyRecords] = useState<BodyRecord[]>([]);
+  const [monthlyBodyRecords, setMonthlyBodyRecords] = useState<BodyRecord[]>(
+    [],
+  );
   const [exerciseSelectorOpen, setExerciseSelectorOpen] = useState(false);
-  const [expandedExercises, setExpandedExercises] = useState<Set<string>>(new Set());
-  const [setEditExerciseId, setSetEditExerciseId] = useState<string | null>(null);
+  const [expandedExercises, setExpandedExercises] = useState<Set<string>>(
+    new Set(),
+  );
+  const [setEditExerciseId, setSetEditExerciseId] = useState<string | null>(
+    null,
+  );
 
   useEffect(() => {
     if (!user) {
@@ -182,10 +195,12 @@ export default function DashboardPage() {
     Promise.all([
       getMemosByUserMonth(user.uid, y, m),
       getBodyRecordsByMonth(user.uid, y, m),
-    ]).then(([memos, bodies]) => {
-      setMonthlyMemos(memos);
-      setMonthlyBodyRecords(bodies);
-    }).catch(console.error);
+    ])
+      .then(([memos, bodies]) => {
+        setMonthlyMemos(memos);
+        setMonthlyBodyRecords(bodies);
+      })
+      .catch(console.error);
   }, [user, currentMonth]);
 
   const handleSaveBody = async () => {
@@ -287,7 +302,11 @@ export default function DashboardPage() {
     const wIds = dayWorkouts.map((w) => w.id);
     try {
       await deleteExerciseSetsFromWorkouts(wIds, exerciseId);
-      setSets((prev) => prev.filter((s) => !(s.exercise_id === exerciseId && wIds.includes(s.workout_id))));
+      setSets((prev) =>
+        prev.filter(
+          (s) => !(s.exercise_id === exerciseId && wIds.includes(s.workout_id)),
+        ),
+      );
     } catch (err) {
       console.error("Delete exercise sets error:", err);
     }
@@ -320,9 +339,13 @@ export default function DashboardPage() {
       setMemos((prev) =>
         prev.map((m) =>
           m.id === editingMemo.id
-            ? { ...m, content: memoContent.trim(), show_on_calendar: memoShowOnCalendar }
-            : m
-        )
+            ? {
+                ...m,
+                content: memoContent.trim(),
+                show_on_calendar: memoShowOnCalendar,
+              }
+            : m,
+        ),
       );
       {
         const prefix = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, "0")}`;
@@ -330,11 +353,29 @@ export default function DashboardPage() {
           if (memoShowOnCalendar) {
             setMonthlyMemos((prev) => {
               const exists = prev.some((m) => m.id === editingMemo.id);
-              if (exists) return prev.map((m) => m.id === editingMemo.id ? { ...m, content: memoContent.trim(), show_on_calendar: true } : m);
-              return [...prev, { ...editingMemo, content: memoContent.trim(), show_on_calendar: true }];
+              if (exists)
+                return prev.map((m) =>
+                  m.id === editingMemo.id
+                    ? {
+                        ...m,
+                        content: memoContent.trim(),
+                        show_on_calendar: true,
+                      }
+                    : m,
+                );
+              return [
+                ...prev,
+                {
+                  ...editingMemo,
+                  content: memoContent.trim(),
+                  show_on_calendar: true,
+                },
+              ];
             });
           } else {
-            setMonthlyMemos((prev) => prev.filter((m) => m.id !== editingMemo.id));
+            setMonthlyMemos((prev) =>
+              prev.filter((m) => m.id !== editingMemo.id),
+            );
           }
         }
       }
@@ -351,7 +392,10 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!monthPickerOpen) return;
     const handleClick = (e: MouseEvent) => {
-      if (monthPickerRef.current && !monthPickerRef.current.contains(e.target as Node)) {
+      if (
+        monthPickerRef.current &&
+        !monthPickerRef.current.contains(e.target as Node)
+      ) {
         setMonthPickerOpen(false);
       }
     };
@@ -372,9 +416,13 @@ export default function DashboardPage() {
     touchStartY.current = null;
     if (Math.abs(deltaX) < 50 || Math.abs(deltaX) < Math.abs(deltaY)) return;
     if (deltaX > 0) {
-      setCurrentMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
+      setCurrentMonth(
+        (prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1),
+      );
     } else {
-      setCurrentMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
+      setCurrentMonth(
+        (prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1),
+      );
     }
   }, []);
 
@@ -388,7 +436,10 @@ export default function DashboardPage() {
     return map;
   }, [sets]);
 
-  const exerciseMap = useMemo(() => new Map(exercises.map((e) => [e.id, e])), [exercises]);
+  const exerciseMap = useMemo(
+    () => new Map(exercises.map((e) => [e.id, e])),
+    [exercises],
+  );
 
   const dayInfoMap = useMemo(() => {
     const map = new Map<string, DayInfo>();
@@ -396,7 +447,16 @@ export default function DashboardPage() {
     workouts.forEach((w) => {
       const d = new Date(w.performed_at);
       const key = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-      const existing = map.get(key) || { duration: 0, setCount: 0, workoutCount: 0, muscleGroups: [], bodyWeight: null, bodySkeletalMuscle: null, bodyFat: null, memoText: null };
+      const existing = map.get(key) || {
+        duration: 0,
+        setCount: 0,
+        workoutCount: 0,
+        muscleGroups: [],
+        bodyWeight: null,
+        bodySkeletalMuscle: null,
+        bodyFat: null,
+        memoText: null,
+      };
       existing.duration += w.duration_minutes || 0;
       existing.workoutCount += 1;
       const wSets = setsByWorkoutId.get(w.id) || [];
@@ -406,11 +466,15 @@ export default function DashboardPage() {
       wSets.forEach((s) => {
         const ex = exerciseMap.get(s.exercise_id);
         if (ex?.muscle_group) {
-          const label = MUSCLE_GROUP_LABELS[ex.muscle_group as MuscleGroup] || ex.muscle_group;
+          const label =
+            MUSCLE_GROUP_LABELS[ex.muscle_group as MuscleGroup] ||
+            ex.muscle_group;
           mgCounts.set(label, (mgCounts.get(label) || 0) + 1);
         }
       });
-      existing.muscleGroups = Array.from(mgCounts.entries()).map(([name, count]) => ({ name, count }));
+      existing.muscleGroups = Array.from(mgCounts.entries()).map(
+        ([name, count]) => ({ name, count }),
+      );
       map.set(key, existing);
     });
 
@@ -418,7 +482,16 @@ export default function DashboardPage() {
       const [y, m, d] = dateStr.split("-").map(Number);
       const key = `${y}-${m - 1}-${d}`;
       if (!map.has(key)) {
-        map.set(key, { duration: 0, setCount: 0, workoutCount: 0, muscleGroups: [], bodyWeight: null, bodySkeletalMuscle: null, bodyFat: null, memoText: null });
+        map.set(key, {
+          duration: 0,
+          setCount: 0,
+          workoutCount: 0,
+          muscleGroups: [],
+          bodyWeight: null,
+          bodySkeletalMuscle: null,
+          bodyFat: null,
+          memoText: null,
+        });
       }
       return map.get(key)!;
     };
@@ -436,7 +509,13 @@ export default function DashboardPage() {
     });
 
     return map;
-  }, [workouts, setsByWorkoutId, exerciseMap, monthlyMemos, monthlyBodyRecords]);
+  }, [
+    workouts,
+    setsByWorkoutId,
+    exerciseMap,
+    monthlyMemos,
+    monthlyBodyRecords,
+  ]);
 
   const getDayInfo = (date: Date): DayInfo | null => {
     const key = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
@@ -466,8 +545,16 @@ export default function DashboardPage() {
     for (let w = 0; w < rowCount; w++) {
       const days: DayCell[] = [];
       for (let d = 0; d < 7; d++) {
-        const date = new Date(calendarStart.getFullYear(), calendarStart.getMonth(), calendarStart.getDate() + w * 7 + d);
-        days.push({ date, isCurrentMonth: date.getMonth() === month && date.getFullYear() === year });
+        const date = new Date(
+          calendarStart.getFullYear(),
+          calendarStart.getMonth(),
+          calendarStart.getDate() + w * 7 + d,
+        );
+        days.push({
+          date,
+          isCurrentMonth:
+            date.getMonth() === month && date.getFullYear() === year,
+        });
       }
       rows.push({ weekNumber: getWeekNumber(days[0].date), days });
     }
@@ -475,19 +562,27 @@ export default function DashboardPage() {
   }, [year, month]);
 
   const getWeekStats = (week: WeekRow) => {
-    let duration = 0, setCount = 0;
+    let duration = 0,
+      setCount = 0;
     week.days.forEach((cell) => {
       const info = getDayInfo(cell.date);
-      if (info) { duration += info.duration; setCount += info.setCount; }
+      if (info) {
+        duration += info.duration;
+        setCount += info.setCount;
+      }
     });
     return { duration, setCount };
   };
 
   const isTodayDate = (date: Date) =>
-    date.getFullYear() === today.getFullYear() && date.getMonth() === today.getMonth() && date.getDate() === today.getDate();
+    date.getFullYear() === today.getFullYear() &&
+    date.getMonth() === today.getMonth() &&
+    date.getDate() === today.getDate();
 
   const isSameDay = (a: Date, b: Date) =>
-    a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate();
 
   const isSelected = (date: Date) => isSameDay(date, selectedDate);
 
@@ -516,9 +611,12 @@ export default function DashboardPage() {
 
   const selectedDateWorkoutIndex = useMemo(() => {
     const sorted = [...workouts].sort(
-      (a, b) => new Date(a.performed_at).getTime() - new Date(b.performed_at).getTime()
+      (a, b) =>
+        new Date(a.performed_at).getTime() - new Date(b.performed_at).getTime(),
     );
-    const dw = sorted.filter((w) => isSameDay(new Date(w.performed_at), selectedDate));
+    const dw = sorted.filter((w) =>
+      isSameDay(new Date(w.performed_at), selectedDate),
+    );
     if (dw.length === 0) return 0;
     return sorted.indexOf(dw[0]) + 1;
   }, [selectedDate, workouts]);
@@ -552,7 +650,9 @@ export default function DashboardPage() {
   };
 
   const dayWorkouts = useMemo(() => {
-    return workouts.filter((w) => isSameDay(new Date(w.performed_at), selectedDate));
+    return workouts.filter((w) =>
+      isSameDay(new Date(w.performed_at), selectedDate),
+    );
   }, [workouts, selectedDate]);
 
   const daySets = useMemo(() => {
@@ -561,16 +661,29 @@ export default function DashboardPage() {
   }, [dayWorkouts, sets]);
 
   const groupedByExercise = useMemo(() => {
-    return daySets.reduce((acc, s) => {
-      if (!acc[s.exercise_id]) acc[s.exercise_id] = [];
-      acc[s.exercise_id].push(s);
-      return acc;
-    }, {} as Record<string, WorkoutSet[]>);
+    return daySets.reduce(
+      (acc, s) => {
+        if (!acc[s.exercise_id]) acc[s.exercise_id] = [];
+        acc[s.exercise_id].push(s);
+        return acc;
+      },
+      {} as Record<string, WorkoutSet[]>,
+    );
   }, [daySets]);
 
   const totalSets = daySets.length;
-  const totalVolume = useMemo(() => daySets.reduce((sum, s) => sum + (s.weight ? Number(s.weight) : 0) * (s.reps ?? 0), 0), [daySets]);
-  const totalDuration = useMemo(() => dayWorkouts.reduce((sum, w) => sum + (w.duration_minutes || 0), 0), [dayWorkouts]);
+  const totalVolume = useMemo(
+    () =>
+      daySets.reduce(
+        (sum, s) => sum + (s.weight ? Number(s.weight) : 0) * (s.reps ?? 0),
+        0,
+      ),
+    [daySets],
+  );
+  const totalDuration = useMemo(
+    () => dayWorkouts.reduce((sum, w) => sum + (w.duration_minutes || 0), 0),
+    [dayWorkouts],
+  );
   const isTodaySelected = isTodayDate(selectedDate);
 
   if (loading) {
@@ -585,6 +698,16 @@ export default function DashboardPage() {
     const editExercise = exerciseMap.get(setEditExerciseId);
     const editSets = daySets.filter((s) => s.exercise_id === setEditExerciseId);
     const editWorkoutId = dayWorkouts[0]?.id || "";
+    const dayExerciseList = Object.entries(groupedByExercise)
+      .sort(([, aSets], [, bSets]) => {
+        const aMin = Math.min(...aSets.map((s) => new Date(s.created_at).getTime()));
+        const bMin = Math.min(...bSets.map((s) => new Date(s.created_at).getTime()));
+        return aMin - bMin;
+      })
+      .map(([exId]) => ({
+        exerciseId: exId,
+        name: exerciseMap.get(exId)?.name || "알 수 없는 운동",
+      }));
     return (
       <SetEditor
         exerciseId={setEditExerciseId}
@@ -596,11 +719,17 @@ export default function DashboardPage() {
         onSetsChanged={(updatedSets) => {
           setSets((prev) => {
             const otherSets = prev.filter(
-              (s) => !(s.exercise_id === setEditExerciseId && dayWorkouts.some((w) => w.id === s.workout_id))
+              (s) =>
+                !(
+                  s.exercise_id === setEditExerciseId &&
+                  dayWorkouts.some((w) => w.id === s.workout_id)
+                ),
             );
             return [...otherSets, ...updatedSets];
           });
         }}
+        dayExercises={dayExerciseList}
+        onSwitchExercise={(newExerciseId) => setSetEditExerciseId(newExerciseId)}
       />
     );
   }
@@ -625,7 +754,9 @@ export default function DashboardPage() {
           >
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <h1 className="text-base font-bold">{isEditing ? "메모 수정" : "메모 추가"}</h1>
+          <h1 className="text-base font-bold">
+            {isEditing ? "메모 수정" : "메모 추가"}
+          </h1>
         </div>
 
         <div className="flex-1 flex flex-col px-4 py-4 overflow-hidden">
@@ -640,16 +771,25 @@ export default function DashboardPage() {
         </div>
 
         <div className="flex items-center justify-between px-4 py-3 border-t shrink-0 safe-area-bottom">
-          <label className="flex items-center gap-2 cursor-pointer" data-testid="label-show-on-calendar">
+          <label
+            className="flex items-center gap-2 cursor-pointer"
+            data-testid="label-show-on-calendar"
+          >
             <div
               className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
-                memoShowOnCalendar ? "bg-primary border-primary" : "border-muted-foreground/40"
+                memoShowOnCalendar
+                  ? "bg-primary border-primary"
+                  : "border-muted-foreground/40"
               }`}
               onClick={() => setMemoShowOnCalendar(!memoShowOnCalendar)}
             >
-              {memoShowOnCalendar && <Check className="h-3 w-3 text-primary-foreground" />}
+              {memoShowOnCalendar && (
+                <Check className="h-3 w-3 text-primary-foreground" />
+              )}
             </div>
-            <span className="text-sm text-muted-foreground">캘린더에서 보기</span>
+            <span className="text-sm text-muted-foreground">
+              캘린더에서 보기
+            </span>
           </label>
 
           <Button
@@ -659,7 +799,13 @@ export default function DashboardPage() {
             onClick={isEditing ? handleUpdateMemo : handleAddMemo}
             data-testid="button-memo-submit"
           >
-            {memoSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : isEditing ? "수정" : "추가"}
+            {memoSaving ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : isEditing ? (
+              "수정"
+            ) : (
+              "추가"
+            )}
           </Button>
         </div>
         {timerState.mode === "running" && timerTarget && (
@@ -681,7 +827,7 @@ export default function DashboardPage() {
 
   const detailHeader = (
     <div
-      className={`flex items-center justify-between px-4 py-2 bg-background cursor-pointer shrink-0 ${detailOpen ? "safe-area-top pt-4" : ""}`}
+      className={`flex items-center justify-between px-4 py-2 bg-background cursor-pointer shrink-0 ${detailOpen ? "safe-area-top mt-3 pt-4" : ""}`}
       onClick={handleToggleDetail}
       data-testid="button-toggle-detail"
     >
@@ -690,17 +836,34 @@ export default function DashboardPage() {
           variant="ghost"
           size="icon"
           className="h-7 w-7 shrink-0"
-          onClick={(e) => { e.stopPropagation(); handleToggleDetail(); }}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleToggleDetail();
+          }}
           data-testid="button-detail-toggle-icon"
         >
-          {detailOpen ? <ChevronDown className="h-5 w-5" /> : <ChevronUp className="h-5 w-5" />}
+          {detailOpen ? (
+            <ChevronDown className="h-5 w-5" />
+          ) : (
+            <ChevronUp className="h-5 w-5" />
+          )}
         </Button>
         <div className="min-w-0">
-          <p className="text-base font-bold leading-tight" data-testid="text-detail-date">
+          <p
+            className="text-base font-bold leading-tight"
+            data-testid="text-detail-date"
+          >
             {selectedDateStr}
-            {isTodaySelected && <span className="text-xs text-primary font-semibold ml-1.5">오늘</span>}
+            {isTodaySelected && (
+              <span className="text-xs text-primary font-semibold ml-1.5">
+                오늘
+              </span>
+            )}
           </p>
-          <p className="text-[11px] text-muted-foreground leading-tight mt-0.5" data-testid="text-workout-index">
+          <p
+            className="text-[11px] text-muted-foreground leading-tight mt-0.5"
+            data-testid="text-workout-index"
+          >
             {selectedDayInfo
               ? `${selectedDateWorkoutIndex}번째 기록`
               : "기록 없음"}
@@ -710,15 +873,31 @@ export default function DashboardPage() {
 
       <div className="flex items-center gap-0.5 shrink-0">
         {!isTodaySelected && (
-          <Button variant="ghost" size="icon" className="h-7 w-7"
-            onClick={(e) => { e.stopPropagation(); handleGoToToday(); }}
-            data-testid="button-go-today" title="오늘">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleGoToToday();
+            }}
+            data-testid="button-go-today"
+            title="오늘"
+          >
             <CalendarCheck className="h-4 w-4" />
           </Button>
         )}
-        <Button variant="ghost" size="icon" className="h-7 w-7"
-          data-testid="button-routine" title="루틴 (준비 중)"
-          onClick={(e) => { e.stopPropagation(); alert("루틴 기능은 준비 중입니다."); }}>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-7 w-7"
+          data-testid="button-routine"
+          title="루틴 (준비 중)"
+          onClick={(e) => {
+            e.stopPropagation();
+            alert("루틴 기능은 준비 중입니다.");
+          }}
+        >
           <Repeat className="h-4 w-4" />
         </Button>
       </div>
@@ -726,12 +905,15 @@ export default function DashboardPage() {
   );
 
   const tabBar = (
-    <div className="flex border-t shrink-0 bg-background safe-area-bottom" data-testid="detail-tab-bar">
-      {([
+    <div
+      className="flex border-t shrink-0 bg-background safe-area-bottom"
+      data-testid="detail-tab-bar"
+    >
+      {[
         { key: "exercises" as DetailTab, label: "운동", icon: Dumbbell },
         { key: "body" as DetailTab, label: "신체", icon: Activity },
         { key: "memo" as DetailTab, label: "메모", icon: ClipboardList },
-      ]).map((tab) => {
+      ].map((tab) => {
         const Icon = tab.icon;
         return (
           <button
@@ -757,36 +939,61 @@ export default function DashboardPage() {
       <div className="px-4 py-4 space-y-4">
         <div>
           <div className="flex items-center justify-between mb-2">
-            <h2 className="text-sm font-bold" data-testid="text-section-title">운동 기록</h2>
+            <h2 className="text-sm font-bold" data-testid="text-section-title">
+              운동 기록
+            </h2>
             {totalDuration > 0 && (
               <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                <Clock className="h-3 w-3" />{totalDuration}분
+                <Clock className="h-3 w-3" />
+                {totalDuration}분
               </span>
             )}
           </div>
           <div className="flex items-center gap-3 text-xs text-muted-foreground mb-3">
-            <span className="flex items-center gap-1"><Dumbbell className="h-3 w-3" />{totalSets}세트</span>
+            <span className="flex items-center gap-1">
+              <Dumbbell className="h-3 w-3" />
+              {totalSets}세트
+            </span>
             <span className="flex items-center gap-1">
               <Weight className="h-3 w-3" />
-              {totalVolume > 0 ? (totalVolume >= 1000 ? `${(totalVolume / 1000).toFixed(1)}t` : `${totalVolume.toLocaleString()}kg`) : "0kg"}
+              {totalVolume > 0
+                ? totalVolume >= 1000
+                  ? `${(totalVolume / 1000).toFixed(1)}t`
+                  : `${totalVolume.toLocaleString()}kg`
+                : "0kg"}
             </span>
           </div>
-          <Button variant="outline" size="sm" className="gap-1.5 mb-3 h-7 text-xs"
-            onClick={() => setExerciseSelectorOpen(true)} data-testid="button-add-more-workout">
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5 mb-3 h-7 text-xs"
+            onClick={() => setExerciseSelectorOpen(true)}
+            data-testid="button-add-more-workout"
+          >
             <Plus className="h-3.5 w-3.5" /> 운동 추가
           </Button>
         </div>
         {totalSets > 0 && (
           <div className="space-y-3">
-            {Object.entries(groupedByExercise).sort(([, aSets], [, bSets]) => {
-                const aMin = Math.min(...aSets.map(s => new Date(s.created_at).getTime()));
-                const bMin = Math.min(...bSets.map(s => new Date(s.created_at).getTime()));
+            {Object.entries(groupedByExercise)
+              .sort(([, aSets], [, bSets]) => {
+                const aMin = Math.min(
+                  ...aSets.map((s) => new Date(s.created_at).getTime()),
+                );
+                const bMin = Math.min(
+                  ...bSets.map((s) => new Date(s.created_at).getTime()),
+                );
                 return aMin - bMin;
-              }).map(([exerciseId, exSets]) => {
+              })
+              .map(([exerciseId, exSets]) => {
                 const exercise = exerciseMap.get(exerciseId);
                 const isExpanded = expandedExercises.has(exerciseId);
                 return (
-                  <Card key={exerciseId} className="overflow-hidden" data-testid={`card-exercise-${exerciseId}`}>
+                  <Card
+                    key={exerciseId}
+                    className="overflow-hidden"
+                    data-testid={`card-exercise-${exerciseId}`}
+                  >
                     <div
                       className="flex items-center gap-3 px-3.5 py-2.5 cursor-pointer active:bg-muted/30 transition-colors"
                       onClick={() => setSetEditExerciseId(exerciseId)}
@@ -796,14 +1003,23 @@ export default function DashboardPage() {
                         <Dumbbell className="h-3.5 w-3.5 text-primary" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{exercise?.name || "알 수 없는 운동"}</p>
+                        <p className="text-sm font-medium truncate">
+                          {exercise?.name || "알 수 없는 운동"}
+                        </p>
                         <div className="flex items-center gap-2 mt-0.5">
                           {exercise?.muscle_group && (
-                            <Badge variant="outline" className="text-[9px] h-4 px-1.5">
-                              {MUSCLE_GROUP_LABELS[exercise.muscle_group as MuscleGroup] || exercise.muscle_group}
+                            <Badge
+                              variant="outline"
+                              className="text-[9px] h-4 px-1.5"
+                            >
+                              {MUSCLE_GROUP_LABELS[
+                                exercise.muscle_group as MuscleGroup
+                              ] || exercise.muscle_group}
                             </Badge>
                           )}
-                          <span className="text-[10px] text-muted-foreground">{exSets.length}세트</span>
+                          <span className="text-[10px] text-muted-foreground">
+                            {exSets.length}세트
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -812,17 +1028,27 @@ export default function DashboardPage() {
                         variant="ghost"
                         size="sm"
                         className="h-7 px-2 text-xs gap-1 text-muted-foreground"
-                        onClick={(e) => { e.stopPropagation(); handleToggleExerciseExpand(exerciseId); }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleToggleExerciseExpand(exerciseId);
+                        }}
                         data-testid={`button-toggle-expand-${exerciseId}`}
                       >
-                        {isExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                        {isExpanded ? (
+                          <ChevronUp className="h-3.5 w-3.5" />
+                        ) : (
+                          <ChevronDown className="h-3.5 w-3.5" />
+                        )}
                         {isExpanded ? "접기" : "펼치기"}
                       </Button>
                       <Button
                         variant="ghost"
                         size="sm"
                         className="h-7 px-2 text-xs gap-1 text-destructive hover:text-destructive"
-                        onClick={(e) => { e.stopPropagation(); handleDeleteExercise(exerciseId); }}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteExercise(exerciseId);
+                        }}
                         data-testid={`button-delete-exercise-${exerciseId}`}
                       >
                         <Trash2 className="h-3.5 w-3.5" />
@@ -832,15 +1058,28 @@ export default function DashboardPage() {
                     {isExpanded && (
                       <div className="px-3.5 py-1.5 border-t border-muted/40 bg-muted/20">
                         <div className="grid grid-cols-3 gap-0 text-[10px] font-medium text-muted-foreground uppercase tracking-wider pb-1">
-                          <span>세트</span><span>횟수 / 무게</span><span>휴식</span>
+                          <span>세트</span>
+                          <span>횟수 / 무게</span>
+                          <span>휴식</span>
                         </div>
                         {exSets.map((s) => (
-                          <div key={s.id} className="grid grid-cols-3 gap-0 text-sm py-1 border-t border-muted/30" data-testid={`row-set-${s.id}`}>
-                            <span className="font-mono text-xs text-muted-foreground">{s.set_number}</span>
-                            <span className="text-xs">
-                              {s.reps ?? "-"}회 / {s.weight ? `${Number(s.weight)}kg` : "-"}
+                          <div
+                            key={s.id}
+                            className="grid grid-cols-3 gap-0 text-sm py-1 border-t border-muted/30"
+                            data-testid={`row-set-${s.id}`}
+                          >
+                            <span className="font-mono text-xs text-muted-foreground">
+                              {s.set_number}
                             </span>
-                            <span className="text-xs text-muted-foreground">{s.rest_seconds ? `${String(Math.floor(s.rest_seconds / 100)).padStart(2, "0")}:${String(s.rest_seconds % 100).padStart(2, "0")}` : "-"}</span>
+                            <span className="text-xs">
+                              {s.reps ?? "-"}회 /{" "}
+                              {s.weight ? `${Number(s.weight)}kg` : "-"}
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              {s.rest_seconds
+                                ? `${String(Math.floor(s.rest_seconds / 100)).padStart(2, "0")}:${String(s.rest_seconds % 100).padStart(2, "0")}`
+                                : "-"}
+                            </span>
                           </div>
                         ))}
                       </div>
@@ -858,28 +1097,67 @@ export default function DashboardPage() {
     <div className="flex-1 overflow-y-auto scrollbar-hide">
       <div className="px-4 py-4 space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-bold" data-testid="text-body-section">신체정보</h2>
-          <Button size="sm" className="h-8 px-4 text-xs gap-1.5" onClick={handleSaveBody} disabled={bodySaving} data-testid="button-save-body">
-            {bodySaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+          <h2 className="text-sm font-bold" data-testid="text-body-section">
+            신체정보
+          </h2>
+          <Button
+            size="sm"
+            className="h-8 px-4 text-xs gap-1.5"
+            onClick={handleSaveBody}
+            disabled={bodySaving}
+            data-testid="button-save-body"
+          >
+            {bodySaving ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Save className="h-3.5 w-3.5" />
+            )}
             저장
           </Button>
         </div>
         <Card className="p-4">
           <div className="grid grid-cols-3 gap-3">
             <div className="space-y-1.5">
-              <label className="text-[10px] font-medium text-muted-foreground">체중 (kg)</label>
-              <Input type="number" step="0.1" placeholder="-" value={bodyWeight} onChange={(e) => setBodyWeight(e.target.value)}
-                className="h-9 text-sm text-center" data-testid="input-body-weight" />
+              <label className="text-[10px] font-medium text-muted-foreground">
+                체중 (kg)
+              </label>
+              <Input
+                type="number"
+                step="0.1"
+                placeholder="-"
+                value={bodyWeight}
+                onChange={(e) => setBodyWeight(e.target.value)}
+                className="h-9 text-sm text-center"
+                data-testid="input-body-weight"
+              />
             </div>
             <div className="space-y-1.5">
-              <label className="text-[10px] font-medium text-muted-foreground">골격근량 (kg)</label>
-              <Input type="number" step="0.1" placeholder="-" value={skeletalMuscle} onChange={(e) => setSkeletalMuscle(e.target.value)}
-                className="h-9 text-sm text-center" data-testid="input-skeletal-muscle" />
+              <label className="text-[10px] font-medium text-muted-foreground">
+                골격근량 (kg)
+              </label>
+              <Input
+                type="number"
+                step="0.1"
+                placeholder="-"
+                value={skeletalMuscle}
+                onChange={(e) => setSkeletalMuscle(e.target.value)}
+                className="h-9 text-sm text-center"
+                data-testid="input-skeletal-muscle"
+              />
             </div>
             <div className="space-y-1.5">
-              <label className="text-[10px] font-medium text-muted-foreground">체지방 (%)</label>
-              <Input type="number" step="0.1" placeholder="-" value={bodyFat} onChange={(e) => setBodyFat(e.target.value)}
-                className="h-9 text-sm text-center" data-testid="input-body-fat" />
+              <label className="text-[10px] font-medium text-muted-foreground">
+                체지방 (%)
+              </label>
+              <Input
+                type="number"
+                step="0.1"
+                placeholder="-"
+                value={bodyFat}
+                onChange={(e) => setBodyFat(e.target.value)}
+                className="h-9 text-sm text-center"
+                data-testid="input-body-fat"
+              />
             </div>
           </div>
         </Card>
@@ -891,9 +1169,16 @@ export default function DashboardPage() {
     <div className="flex-1 overflow-y-auto scrollbar-hide">
       <div className="px-4 py-4 space-y-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-bold" data-testid="text-memo-section">메모</h2>
-          <Button size="sm" variant="outline" className="h-8 px-4 text-xs gap-1.5"
-            onClick={() => setMemoAddOpen(true)} data-testid="button-open-memo-add">
+          <h2 className="text-sm font-bold" data-testid="text-memo-section">
+            메모
+          </h2>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 px-4 text-xs gap-1.5"
+            onClick={() => setMemoAddOpen(true)}
+            data-testid="button-open-memo-add"
+          >
             <Plus className="h-3.5 w-3.5" /> 추가
           </Button>
         </div>
@@ -911,19 +1196,32 @@ export default function DashboardPage() {
                 onClick={() => handleOpenEditMemo(m)}
                 data-testid={`card-memo-${m.id}`}
               >
-                <p className="text-sm whitespace-pre-wrap line-clamp-2">{m.content}</p>
+                <p className="text-sm whitespace-pre-wrap line-clamp-2">
+                  {m.content}
+                </p>
                 <div className="flex items-center gap-2 mt-2">
                   {m.show_on_calendar && (
-                    <Badge variant="secondary" className="text-[9px] h-4 px-1.5">캘린더 표시</Badge>
+                    <Badge
+                      variant="secondary"
+                      className="text-[9px] h-4 px-1.5"
+                    >
+                      캘린더 표시
+                    </Badge>
                   )}
                   <span className="text-[10px] text-muted-foreground ml-auto">
-                    {new Date(m.created_at).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit" })}
+                    {new Date(m.created_at).toLocaleTimeString("ko-KR", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
                   </span>
                   <Button
                     variant="ghost"
                     size="sm"
                     className="h-6 px-2 text-[10px] text-destructive hover:text-destructive"
-                    onClick={(e) => { e.stopPropagation(); handleDeleteMemo(m.id); }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteMemo(m.id);
+                    }}
                     data-testid={`button-delete-memo-${m.id}`}
                   >
                     삭제
@@ -937,26 +1235,42 @@ export default function DashboardPage() {
     </div>
   );
 
-
   return (
     <AppShell
       showHeader={!detailOpen}
       headerCenter={
         <div ref={monthPickerRef} className="relative">
-          <button className="flex items-center gap-1.5 text-sm font-semibold px-2 py-1 rounded-md hover:bg-muted/50 transition-colors"
-            onClick={() => setMonthPickerOpen(!monthPickerOpen)} data-testid="button-month-picker">
+          <button
+            className="flex items-center gap-1.5 text-sm font-semibold px-2 py-1 rounded-md hover:bg-muted/50 transition-colors"
+            onClick={() => setMonthPickerOpen(!monthPickerOpen)}
+            data-testid="button-month-picker"
+          >
             {year}.{String(month + 1).padStart(2, "0")}
-            <ChevronRight className={`h-3 w-3 text-muted-foreground transition-transform ${monthPickerOpen ? "rotate-90" : ""}`} />
+            <ChevronRight
+              className={`h-3 w-3 text-muted-foreground transition-transform ${monthPickerOpen ? "rotate-90" : ""}`}
+            />
           </button>
           {monthPickerOpen && (
             <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 bg-background border rounded-lg shadow-lg p-2 z-20 flex items-center gap-2">
-              <Button variant="ghost" size="icon" className="h-7 w-7"
-                onClick={() => setCurrentMonth(new Date(year, month - 1, 1))} data-testid="button-prev-month">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={() => setCurrentMonth(new Date(year, month - 1, 1))}
+                data-testid="button-prev-month"
+              >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
-              <span className="text-sm font-medium whitespace-nowrap min-w-[5.5rem] text-center">{year}년 {month + 1}월</span>
-              <Button variant="ghost" size="icon" className="h-7 w-7"
-                onClick={() => setCurrentMonth(new Date(year, month + 1, 1))} data-testid="button-next-month">
+              <span className="text-sm font-medium whitespace-nowrap min-w-[5.5rem] text-center">
+                {year}년 {month + 1}월
+              </span>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7"
+                onClick={() => setCurrentMonth(new Date(year, month + 1, 1))}
+                data-testid="button-next-month"
+              >
                 <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
@@ -964,140 +1278,190 @@ export default function DashboardPage() {
         </div>
       }
       headerRight={
-        <Button variant="ghost" size="icon" className="h-8 w-8" data-testid="button-settings">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8"
+          data-testid="button-settings"
+        >
           <Settings className="h-5 w-5" />
         </Button>
       }
     >
-    <div className="flex flex-col flex-1 overflow-hidden" data-testid="dashboard-calendar">
       <div
-        ref={calendarRef}
-        className="flex flex-col select-none overflow-hidden"
-        onTouchStart={handleTouchStart}
-        onTouchEnd={handleTouchEnd}
-        style={{
-          flex: detailOpen ? "0 0 0px" : "1 1 auto",
-          opacity: detailOpen ? 0 : 1,
-          transition: "flex 0.2s ease, opacity 0.15s ease",
-          pointerEvents: detailOpen ? "none" : "auto",
-        }}
+        className="flex flex-col flex-1 overflow-hidden"
+        data-testid="dashboard-calendar"
       >
-        <div className="grid grid-cols-[2.2rem_repeat(7,1fr)] text-center shrink-0 border-b">
-          <div className="py-1.5" />
-          {dayLabels.map((label, i) => (
-            <div key={label} className={`py-1.5 text-[11px] font-medium ${i === 0 ? "text-red-400" : i === 6 ? "text-blue-400" : "text-muted-foreground"}`}>
-              {label}
-            </div>
-          ))}
-        </div>
-        <div className="flex-1 flex flex-col">
-          {weeks.map((week, wIdx) => {
-            const stats = getWeekStats(week);
-            return (
-              <div key={wIdx} className="grid grid-cols-[2.2rem_repeat(7,1fr)] border-b border-border/30"
-                style={{ flex: getRowFlex(wIdx), minHeight: 0, transition: "flex 0.3s ease" }}>
-                <div className="flex flex-col items-center justify-start pt-1.5 text-center border-r border-border/20">
-                  <span className="text-[9px] font-semibold text-muted-foreground/80 leading-tight">{week.weekNumber}주</span>
-                  {stats.duration > 0 && <span className="text-[8px] text-muted-foreground/60 leading-tight mt-0.5">{formatDuration(stats.duration)}</span>}
-                  {stats.setCount > 0 && <span className="text-[8px] text-muted-foreground/60 leading-tight">{stats.setCount}s</span>}
-                </div>
-                {week.days.map((cell, dIdx) => {
-                  const { date, isCurrentMonth } = cell;
-                  const info = getDayInfo(date);
-                  const todayDate = isTodayDate(date);
-                  const sel = isSelected(date);
-                  const isSunday = date.getDay() === 0;
-                  const isSaturday = date.getDay() === 6;
-                  return (
-                    <button key={`${wIdx}-${dIdx}`}
-                      className={`p-0.5 flex flex-col items-center transition-colors overflow-hidden ${sel ? "bg-primary/5" : ""} ${!isCurrentMonth ? "opacity-40" : ""}`}
-                      onClick={() => handleDateClick(date)}
-                      data-testid={`button-date-${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`}>
-                      <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium shrink-0 ${
-                        todayDate ? "bg-primary text-primary-foreground"
-                          : sel ? "bg-primary/20 text-primary"
-                          : isSunday ? "text-red-400"
-                          : isSaturday ? "text-blue-400"
-                          : "text-foreground"}`}>
-                        {date.getDate()}
-                      </div>
-                      {info && isCurrentMonth && (
-                        <div className="w-full mt-0.5 space-y-px overflow-hidden">
-                          {info.bodyWeight != null && (
-                            <div className="bg-emerald-100 dark:bg-emerald-900/30 rounded-sm px-0.5 py-px">
-                              <p className="text-[8px] text-emerald-700 dark:text-emerald-300 font-medium truncate text-left leading-tight">체중 {info.bodyWeight}kg</p>
-                            </div>
-                          )}
-                          {info.bodySkeletalMuscle != null && (
-                            <div className="bg-emerald-100 dark:bg-emerald-900/30 rounded-sm px-0.5 py-px">
-                              <p className="text-[8px] text-emerald-700 dark:text-emerald-300 font-medium truncate text-left leading-tight">골격근 {info.bodySkeletalMuscle}kg</p>
-                            </div>
-                          )}
-                          {info.bodyFat != null && (
-                            <div className="bg-emerald-100 dark:bg-emerald-900/30 rounded-sm px-0.5 py-px">
-                              <p className="text-[8px] text-emerald-700 dark:text-emerald-300 font-medium truncate text-left leading-tight">체지방 {info.bodyFat}%</p>
-                            </div>
-                          )}
-                          {info.muscleGroups.map((mg) => (
-                            <div key={mg.name} className="bg-sky-100 dark:bg-sky-900/30 rounded-sm px-0.5 py-px">
-                              <p className="text-[8px] text-sky-700 dark:text-sky-300 font-medium truncate text-left leading-tight">{mg.name} {mg.count}</p>
-                            </div>
-                          ))}
-                          {info.memoText && (
-                            <div className="bg-yellow-100 dark:bg-yellow-900/30 rounded-sm px-0.5 py-px">
-                              <p className="text-[8px] text-yellow-800 dark:text-yellow-300 truncate text-left leading-tight">{info.memoText}</p>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </button>
-                  );
-                })}
+        <div
+          ref={calendarRef}
+          className="flex flex-col select-none overflow-hidden"
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+          style={{
+            flex: detailOpen ? "0 0 0px" : "1 1 auto",
+            opacity: detailOpen ? 0 : 1,
+            transition: "flex 0.2s ease, opacity 0.15s ease",
+            pointerEvents: detailOpen ? "none" : "auto",
+          }}
+        >
+          <div className="grid grid-cols-[2.2rem_repeat(7,1fr)] text-center shrink-0 border-b">
+            <div className="py-1.5" />
+            {dayLabels.map((label, i) => (
+              <div
+                key={label}
+                className={`py-1.5 text-[11px] font-medium ${i === 0 ? "text-red-400" : i === 6 ? "text-blue-400" : "text-muted-foreground"}`}
+              >
+                {label}
               </div>
-            );
-          })}
+            ))}
+          </div>
+          <div className="flex-1 flex flex-col">
+            {weeks.map((week, wIdx) => {
+              const stats = getWeekStats(week);
+              return (
+                <div
+                  key={wIdx}
+                  className="grid grid-cols-[2.2rem_repeat(7,1fr)] border-b border-border/30"
+                  style={{
+                    flex: getRowFlex(wIdx),
+                    minHeight: 0,
+                    transition: "flex 0.3s ease",
+                  }}
+                >
+                  <div className="flex flex-col items-center justify-start pt-1.5 text-center border-r border-border/20">
+                    <span className="text-[9px] font-semibold text-muted-foreground/80 leading-tight">
+                      {week.weekNumber}주
+                    </span>
+                    {stats.duration > 0 && (
+                      <span className="text-[8px] text-muted-foreground/60 leading-tight mt-0.5">
+                        {formatDuration(stats.duration)}
+                      </span>
+                    )}
+                    {stats.setCount > 0 && (
+                      <span className="text-[8px] text-muted-foreground/60 leading-tight">
+                        {stats.setCount}s
+                      </span>
+                    )}
+                  </div>
+                  {week.days.map((cell, dIdx) => {
+                    const { date, isCurrentMonth } = cell;
+                    const info = getDayInfo(date);
+                    const todayDate = isTodayDate(date);
+                    const sel = isSelected(date);
+                    const isSunday = date.getDay() === 0;
+                    const isSaturday = date.getDay() === 6;
+                    return (
+                      <button
+                        key={`${wIdx}-${dIdx}`}
+                        className={`p-0.5 flex flex-col items-center transition-colors overflow-hidden ${sel ? "bg-primary/5" : ""} ${!isCurrentMonth ? "opacity-40" : ""}`}
+                        onClick={() => handleDateClick(date)}
+                        data-testid={`button-date-${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`}
+                      >
+                        <div
+                          className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium shrink-0 ${
+                            todayDate
+                              ? "bg-primary text-primary-foreground"
+                              : sel
+                                ? "bg-primary/20 text-primary"
+                                : isSunday
+                                  ? "text-red-400"
+                                  : isSaturday
+                                    ? "text-blue-400"
+                                    : "text-foreground"
+                          }`}
+                        >
+                          {date.getDate()}
+                        </div>
+                        {info && isCurrentMonth && (
+                          <div className="w-full mt-0.5 space-y-px overflow-hidden">
+                            {info.bodyWeight != null && (
+                              <div className="bg-emerald-100 dark:bg-emerald-900/30 rounded-sm px-0.5 py-px">
+                                <p className="text-[8px] text-emerald-700 dark:text-emerald-300 font-medium truncate text-left leading-tight">
+                                  체중 {info.bodyWeight}kg
+                                </p>
+                              </div>
+                            )}
+                            {info.bodySkeletalMuscle != null && (
+                              <div className="bg-emerald-100 dark:bg-emerald-900/30 rounded-sm px-0.5 py-px">
+                                <p className="text-[8px] text-emerald-700 dark:text-emerald-300 font-medium truncate text-left leading-tight">
+                                  골격근 {info.bodySkeletalMuscle}kg
+                                </p>
+                              </div>
+                            )}
+                            {info.bodyFat != null && (
+                              <div className="bg-emerald-100 dark:bg-emerald-900/30 rounded-sm px-0.5 py-px">
+                                <p className="text-[8px] text-emerald-700 dark:text-emerald-300 font-medium truncate text-left leading-tight">
+                                  체지방 {info.bodyFat}%
+                                </p>
+                              </div>
+                            )}
+                            {info.muscleGroups.map((mg) => (
+                              <div
+                                key={mg.name}
+                                className="bg-sky-100 dark:bg-sky-900/30 rounded-sm px-0.5 py-px"
+                              >
+                                <p className="text-[8px] text-sky-700 dark:text-sky-300 font-medium truncate text-left leading-tight">
+                                  {mg.name} {mg.count}
+                                </p>
+                              </div>
+                            ))}
+                            {info.memoText && (
+                              <div className="bg-yellow-100 dark:bg-yellow-900/30 rounded-sm px-0.5 py-px">
+                                <p className="text-[8px] text-yellow-800 dark:text-yellow-300 truncate text-left leading-tight">
+                                  {info.memoText}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div
+          className="bg-background flex flex-col"
+          style={{
+            flex: detailOpen ? "1 1 auto" : "0 0 auto",
+            transition: "flex 0.2s ease",
+            overflow: "hidden",
+            borderTop: "none",
+          }}
+          data-testid="detail-panel"
+        >
+          {detailHeader}
+          {detailOpen ? (
+            <>
+              {activeTab === "exercises" && exercisesTab}
+              {activeTab === "body" && bodyTab}
+              {activeTab === "memo" && memoTab}
+              {tabBar}
+            </>
+          ) : null}
         </div>
       </div>
-
-      <div
-        className="bg-background flex flex-col"
-        style={{
-          flex: detailOpen ? "1 1 auto" : "0 0 auto",
-          transition: "flex 0.2s ease",
-          overflow: "hidden",
-          borderTop: "none",
-        }}
-        data-testid="detail-panel"
-      >
-        {detailHeader}
-        {detailOpen ? (
-          <>
-            {activeTab === "exercises" && exercisesTab}
-            {activeTab === "body" && bodyTab}
-            {activeTab === "memo" && memoTab}
-            {tabBar}
-          </>
-        ) : null}
-      </div>
-    </div>
-    <ExerciseSelector
-      open={exerciseSelectorOpen}
-      onClose={() => setExerciseSelectorOpen(false)}
-      onSelect={handleExercisesSelected}
-    />
-    {!setEditExerciseId && timerState.mode === "running" && timerTarget && (
-      <FloatingTimer
-        onNavigate={() => {
-          if (timerTarget) {
-            const [y, m, d] = timerTarget.date.split("-").map(Number);
-            const targetDate = new Date(y, m - 1, d);
-            setSelectedDate(targetDate);
-            setCurrentMonth(new Date(y, m - 1, 1));
-            setSetEditExerciseId(timerTarget.exerciseId);
-          }
-        }}
+      <ExerciseSelector
+        open={exerciseSelectorOpen}
+        onClose={() => setExerciseSelectorOpen(false)}
+        onSelect={handleExercisesSelected}
       />
-    )}
+      {!setEditExerciseId && timerState.mode === "running" && timerTarget && (
+        <FloatingTimer
+          onNavigate={() => {
+            if (timerTarget) {
+              const [y, m, d] = timerTarget.date.split("-").map(Number);
+              const targetDate = new Date(y, m - 1, d);
+              setSelectedDate(targetDate);
+              setCurrentMonth(new Date(y, m - 1, 1));
+              setSetEditExerciseId(timerTarget.exerciseId);
+            }
+          }}
+        />
+      )}
     </AppShell>
   );
 }
