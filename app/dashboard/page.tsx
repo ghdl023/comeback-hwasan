@@ -1477,6 +1477,14 @@ export default function DashboardPage() {
         open={historyCalendarOpen}
         onClose={() => setHistoryCalendarOpen(false)}
         workoutDates={workoutDatesSet}
+        onSelectDate={(dateStr) => {
+          const [y, m, d] = dateStr.split("-").map(Number);
+          const targetDate = new Date(y, m - 1, d);
+          setSelectedDate(targetDate);
+          setCurrentMonth(new Date(y, m - 1, 1));
+          setHistoryCalendarOpen(false);
+          setDetailOpen(true);
+        }}
       />
       {!setEditExerciseId && timerState.mode === "running" && timerTarget && (
         <FloatingTimer

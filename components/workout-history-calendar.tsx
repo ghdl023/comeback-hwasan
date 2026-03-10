@@ -8,12 +8,14 @@ interface WorkoutHistoryCalendarProps {
   open: boolean;
   onClose: () => void;
   workoutDates: Set<string>;
+  onSelectDate?: (dateStr: string) => void;
 }
 
 export function WorkoutHistoryCalendar({
   open,
   onClose,
   workoutDates,
+  onSelectDate,
 }: WorkoutHistoryCalendarProps) {
   const today = useMemo(() => new Date(), []);
   const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
@@ -96,11 +98,17 @@ export function WorkoutHistoryCalendar({
                       const isFuture = dateStr > todayStr;
 
                       return (
-                        <div
+                        <button
                           key={dateStr}
-                          className={`w-[26px] h-[26px] rounded-md flex items-center justify-center text-[12px] font-semibold leading-none ${
+                          type="button"
+                          onClick={() => {
+                            if (!isFuture && onSelectDate) {
+                              onSelectDate(dateStr);
+                            }
+                          }}
+                          className={`w-[26px] h-[26px] rounded-md flex items-center justify-center text-[12px] font-semibold leading-none cursor-pointer active:scale-95 transition-transform ${
                             isFuture
-                              ? "bg-muted/30 text-muted-foreground/30"
+                              ? "bg-muted/30 text-muted-foreground/30 cursor-default"
                               : hasWorkout
                                 ? "bg-blue-500/80 text-white"
                                 : "bg-muted/60 text-muted-foreground/60"
@@ -112,7 +120,7 @@ export function WorkoutHistoryCalendar({
                           data-testid={`history-day-${dateStr}`}
                         >
                           {day}
-                        </div>
+                        </button>
                       );
                     })}
                   </div>
