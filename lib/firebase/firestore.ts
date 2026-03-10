@@ -165,7 +165,11 @@ export async function getWorkouts(
     q = query(q, firestoreLimit(limitCount));
   }
   const snap = await getDocs(q);
-  return snap.docs.map((d) => serializeDoc<Workout>(d.id, d.data()));
+  return snap.docs.map((d) => {
+    const w = serializeDoc<Workout>(d.id, d.data());
+    if (!w.exercise_order) w.exercise_order = [];
+    return w;
+  });
 }
 
 export async function getWorkout(id: string, userId: string): Promise<Workout | null> {
@@ -173,7 +177,9 @@ export async function getWorkout(id: string, userId: string): Promise<Workout | 
   if (!snap.exists()) return null;
   const data = snap.data();
   if (data.user_id !== userId) return null;
-  return serializeDoc<Workout>(snap.id, data);
+  const w = serializeDoc<Workout>(snap.id, data);
+  if (!w.exercise_order) w.exercise_order = [];
+  return w;
 }
 
 export async function addWorkout(
@@ -185,6 +191,14 @@ export async function addWorkout(
     created_at: now,
   });
   return { id: docRef.id, ...data, created_at: now } as Workout;
+}
+
+export async function updateWorkoutExerciseOrder(
+  workoutId: string,
+  exerciseOrder: string[]
+): Promise<void> {
+  const ref = doc(db, "workouts", workoutId);
+  await updateDoc(ref, { exercise_order: exerciseOrder });
 }
 
 export async function deleteExerciseSetsFromWorkouts(

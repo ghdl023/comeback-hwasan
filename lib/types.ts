@@ -24,6 +24,7 @@ export interface Workout {
   performed_at: string;
   duration_minutes: number | null;
   notes: string | null;
+  exercise_order: string[];
   created_at: string;
 }
 

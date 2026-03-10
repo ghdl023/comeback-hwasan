@@ -17,6 +17,7 @@ import {
   getMemosByUserMonth,
   getBodyRecordsByMonth,
   getLatestBodyRecord,
+  updateWorkoutExerciseOrder,
 } from "@/lib/firebase/firestore";
 import type {
   Workout,
@@ -37,6 +38,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { AppShell } from "@/components/app-shell";
 import { ExerciseSelector } from "@/components/exercise-selector";
 import { SetEditor } from "@/components/set-editor";
+import { SortableExerciseList } from "@/components/sortable-exercise-list";
 import { FloatingTimer } from "@/components/floating-timer";
 import { useRestTimer } from "@/components/rest-timer-context";
 import {
@@ -672,6 +674,40 @@ export default function DashboardPage() {
     );
   }, [daySets]);
 
+  const sortedExerciseEntries = useMemo(() => {
+    const entries = Object.entries(groupedByExercise);
+    const workout = dayWorkouts[0];
+    const order = workout?.exercise_order;
+    if (order && order.length > 0) {
+      const orderMap = new Map(order.map((id, idx) => [id, idx]));
+      return entries.sort(([aId], [bId]) => {
+        const aIdx = orderMap.get(aId) ?? Infinity;
+        const bIdx = orderMap.get(bId) ?? Infinity;
+        return aIdx - bIdx;
+      });
+    }
+    return entries.sort(([, aSets], [, bSets]) => {
+      const aMin = Math.min(...aSets.map((s) => new Date(s.created_at).getTime()));
+      const bMin = Math.min(...bSets.map((s) => new Date(s.created_at).getTime()));
+      return aMin - bMin;
+    });
+  }, [groupedByExercise, dayWorkouts]);
+
+  const handleExerciseReorder = useCallback(async (newOrder: string[]) => {
+    const workout = dayWorkouts[0];
+    if (!workout) return;
+    setWorkouts((prev) =>
+      prev.map((w) =>
+        w.id === workout.id ? { ...w, exercise_order: newOrder } : w
+      )
+    );
+    try {
+      await updateWorkoutExerciseOrder(workout.id, newOrder);
+    } catch (err) {
+      console.error("Reorder error:", err);
+    }
+  }, [dayWorkouts]);
+
   const totalSets = daySets.length;
   const totalVolume = useMemo(
     () =>
@@ -699,12 +735,7 @@ export default function DashboardPage() {
     const editExercise = exerciseMap.get(setEditExerciseId);
     const editSets = daySets.filter((s) => s.exercise_id === setEditExerciseId);
     const editWorkoutId = dayWorkouts[0]?.id || "";
-    const dayExerciseList = Object.entries(groupedByExercise)
-      .sort(([, aSets], [, bSets]) => {
-        const aMin = Math.min(...aSets.map((s) => new Date(s.created_at).getTime()));
-        const bMin = Math.min(...bSets.map((s) => new Date(s.created_at).getTime()));
-        return aMin - bMin;
-      })
+    const dayExerciseList = sortedExerciseEntries
       .map(([exId]) => ({
         exerciseId: exId,
         name: exerciseMap.get(exId)?.name || "알 수 없는 운동",
@@ -975,128 +1006,15 @@ export default function DashboardPage() {
           </Button>
         </div>
         {totalSets > 0 && (
-          <div className="space-y-3">
-            {Object.entries(groupedByExercise)
-              .sort(([, aSets], [, bSets]) => {
-                const aMin = Math.min(
-                  ...aSets.map((s) => new Date(s.created_at).getTime()),
-                );
-                const bMin = Math.min(
-                  ...bSets.map((s) => new Date(s.created_at).getTime()),
-                );
-                return aMin - bMin;
-              })
-              .map(([exerciseId, exSets]) => {
-                const exercise = exerciseMap.get(exerciseId);
-                const isExpanded = expandedExercises.has(exerciseId);
-                const completedCount = exSets.filter((s) => s.completed).length;
-                const allCompleted = completedCount === exSets.length && exSets.length > 0;
-                return (
-                  <Card
-                    key={exerciseId}
-                    className="overflow-hidden"
-                    data-testid={`card-exercise-${exerciseId}`}
-                  >
-                    <div
-                      className="flex items-center gap-3 px-3.5 py-2.5 cursor-pointer active:bg-muted/30 transition-colors"
-                      onClick={() => setSetEditExerciseId(exerciseId)}
-                      data-testid={`button-exercise-card-${exerciseId}`}
-                    >
-                      <div className={`flex items-center justify-center w-7 h-7 rounded-lg shrink-0 ${allCompleted ? "bg-emerald-500/10" : "bg-primary/10"}`}>
-                        {allCompleted ? (
-                          <CircleCheck className="h-4 w-4 text-emerald-500" />
-                        ) : (
-                          <Dumbbell className="h-3.5 w-3.5 text-primary" />
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">
-                          {exercise?.name || "알 수 없는 운동"}
-                        </p>
-                        <div className="flex items-center gap-2 mt-0.5">
-                          {exercise?.muscle_group && (
-                            <Badge
-                              variant="outline"
-                              className="text-[9px] h-4 px-1.5"
-                            >
-                              {MUSCLE_GROUP_LABELS[
-                                exercise.muscle_group as MuscleGroup
-                              ] || exercise.muscle_group}
-                            </Badge>
-                          )}
-                          <span className="text-[10px] text-muted-foreground">
-                            {allCompleted
-                              ? `${exSets.length}세트`
-                              : `${completedCount} / ${exSets.length}세트`}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between px-3.5 py-1.5 border-t border-muted/40">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 text-xs gap-1 text-muted-foreground"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleToggleExerciseExpand(exerciseId);
-                        }}
-                        data-testid={`button-toggle-expand-${exerciseId}`}
-                      >
-                        {isExpanded ? (
-                          <ChevronUp className="h-3.5 w-3.5" />
-                        ) : (
-                          <ChevronDown className="h-3.5 w-3.5" />
-                        )}
-                        {isExpanded ? "접기" : "펼치기"}
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-7 px-2 text-xs gap-1 text-destructive hover:text-destructive"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteExercise(exerciseId);
-                        }}
-                        data-testid={`button-delete-exercise-${exerciseId}`}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                        삭제
-                      </Button>
-                    </div>
-                    {isExpanded && (
-                      <div className="px-3.5 py-1.5 border-t border-muted/40 bg-muted/20">
-                        <div className="grid grid-cols-3 gap-0 text-[10px] font-medium text-muted-foreground uppercase tracking-wider pb-1">
-                          <span>세트</span>
-                          <span>횟수 / 무게</span>
-                          <span>휴식</span>
-                        </div>
-                        {exSets.map((s) => (
-                          <div
-                            key={s.id}
-                            className="grid grid-cols-3 gap-0 text-sm py-1 border-t border-muted/30"
-                            data-testid={`row-set-${s.id}`}
-                          >
-                            <span className="font-mono text-xs text-muted-foreground">
-                              {s.set_number}
-                            </span>
-                            <span className="text-xs">
-                              {s.reps ?? "-"}회 /{" "}
-                              {s.weight ? `${Number(s.weight)}kg` : "-"}
-                            </span>
-                            <span className="text-xs text-muted-foreground">
-                              {s.rest_seconds
-                                ? `${String(Math.floor(s.rest_seconds / 100)).padStart(2, "0")}:${String(s.rest_seconds % 100).padStart(2, "0")}`
-                                : "-"}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </Card>
-                );
-              })}
-          </div>
+          <SortableExerciseList
+            entries={sortedExerciseEntries}
+            exerciseMap={exerciseMap}
+            expandedExercises={expandedExercises}
+            onEditExercise={(id) => setSetEditExerciseId(id)}
+            onToggleExpand={handleToggleExerciseExpand}
+            onDeleteExercise={handleDeleteExercise}
+            onReorder={handleExerciseReorder}
+          />
         )}
       </div>
     </div>
