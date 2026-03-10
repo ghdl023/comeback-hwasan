@@ -75,7 +75,7 @@ export function WorkoutHistoryCalendar({
           {months.map(({ year, month, label, daysInMonth }, monthIdx) => {
             const workoutCount = monthStats[`${year}-${month}`] || 0;
             const days: number[] = [];
-            for (let d = 1; d <= daysInMonth; d++) days.push(d);
+            for (let d = daysInMonth; d >= 1; d--) days.push(d);
 
             return (
               <div
