@@ -20,7 +20,13 @@ import {
   ChevronRight,
   Loader2,
   Dumbbell,
+  Check,
 } from "lucide-react";
+
+export interface ExistingDayExercise {
+  exercise: Exercise;
+  completed: boolean;
+}
 
 interface ExerciseSelectorProps {
   open: boolean;
@@ -28,6 +34,7 @@ interface ExerciseSelectorProps {
   onSelect: (exercises: Exercise[]) => void;
   onAddExercise?: () => void;
   initialSelected?: Exercise[];
+  existingDayExercises?: ExistingDayExercise[];
 }
 
 type ViewLevel = "muscle_groups" | "exercises" | "sub_exercises";
@@ -44,6 +51,7 @@ export function ExerciseSelector({
   onSelect,
   onAddExercise,
   initialSelected = [],
+  existingDayExercises = [],
 }: ExerciseSelectorProps) {
   const { user } = useAuth();
   const [nav, setNav] = useState<NavigationState>({ level: "muscle_groups" });
@@ -120,7 +128,13 @@ export function ExerciseSelector({
     loadChildExercises(exercise);
   };
 
+  const existingExerciseIds = useMemo(
+    () => new Set(existingDayExercises.map((e) => e.exercise.id)),
+    [existingDayExercises],
+  );
+
   const handleSelectExercise = (exercise: Exercise) => {
+    if (existingExerciseIds.has(exercise.id)) return;
     setSelected((prev) => {
       const exists = prev.find((e) => e.id === exercise.id);
       if (exists) {
@@ -226,6 +240,7 @@ export function ExerciseSelector({
             results={searchResults}
             selected={selected}
             onSelect={handleSelectExercise}
+            existingIds={existingExerciseIds}
           />
         ) : nav.level === "muscle_groups" ? (
           <MuscleGroupsView
@@ -243,6 +258,7 @@ export function ExerciseSelector({
             onClickExercise={handleExerciseClick}
             onSelectExercise={handleSelectExercise}
             showChevron={true}
+            existingIds={existingExerciseIds}
           />
         ) : (
           <ExerciseListView
@@ -250,19 +266,53 @@ export function ExerciseSelector({
             selected={selected}
             onSelectExercise={handleSelectExercise}
             showChevron={false}
+            existingIds={existingExerciseIds}
           />
         )}
       </div>
 
       <div className="border-t bg-background shrink-0 safe-area-bottom">
-        {selected.length > 0 ? (
+        {(existingDayExercises.length > 0 || selected.length > 0) ? (
           <div className="px-3 pt-2.5 pb-2">
             <div className="overflow-x-auto scrollbar-hide">
               <div className="flex gap-2 pb-2">
-                {selected.map((ex) => (
+                {existingDayExercises.map((item) => {
+                  const ex = item.exercise;
+                  return (
+                    <div
+                      key={`existing-${ex.id}`}
+                      className={`shrink-0 w-16 h-16 rounded-lg border flex flex-col items-center justify-center gap-0.5 p-1 relative ${
+                        item.completed
+                          ? "border-primary/30 bg-primary/5 opacity-50"
+                          : "border-border/60 bg-card shadow-sm"
+                      }`}
+                      data-testid={`card-existing-${ex.id}`}
+                    >
+                      {item.completed && (
+                        <div className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-primary text-primary-foreground flex items-center justify-center">
+                          <Check className="h-2.5 w-2.5" />
+                        </div>
+                      )}
+                      <p className="text-[9px] text-muted-foreground leading-tight text-center line-clamp-1">
+                        {ex.muscle_group
+                          ? MUSCLE_GROUP_LABELS[ex.muscle_group as MuscleGroup] || ex.muscle_group
+                          : "-"}
+                      </p>
+                      <p className={`text-[10px] font-medium leading-tight text-center line-clamp-2 ${item.completed ? "text-muted-foreground" : ""}`}>
+                        {ex.name}
+                      </p>
+                      {item.completed && (
+                        <p className="text-[8px] text-primary font-semibold">완료</p>
+                      )}
+                    </div>
+                  );
+                })}
+                {selected
+                  .filter((ex) => !existingDayExercises.some((e) => e.exercise.id === ex.id))
+                  .map((ex) => (
                   <button
                     key={ex.id}
-                    className="shrink-0 w-16 h-16 rounded-lg border border-border/60 bg-card shadow-sm flex flex-col items-center justify-center gap-0.5 p-1 relative group"
+                    className="shrink-0 w-16 h-16 rounded-lg border border-primary/40 bg-primary/5 shadow-sm flex flex-col items-center justify-center gap-0.5 p-1 relative group"
                     onClick={() => handleRemoveSelected(ex.id)}
                     data-testid={`card-selected-${ex.id}`}
                   >
@@ -281,16 +331,18 @@ export function ExerciseSelector({
                 ))}
               </div>
             </div>
-            <div className="flex justify-end">
-              <Button
-                size="sm"
-                className="h-9 px-5 text-sm"
-                onClick={handleConfirm}
-                data-testid="button-confirm-selection"
-              >
-                완료
-              </Button>
-            </div>
+            {selected.filter((ex) => !existingDayExercises.some((e) => e.exercise.id === ex.id)).length > 0 && (
+              <div className="flex justify-end">
+                <Button
+                  size="sm"
+                  className="h-9 px-5 text-sm"
+                  onClick={handleConfirm}
+                  data-testid="button-confirm-selection"
+                >
+                  완료
+                </Button>
+              </div>
+            )}
           </div>
         ) : (
           <div className="px-3 py-3 flex items-center justify-center">
@@ -339,12 +391,14 @@ function ExerciseListView({
   onClickExercise,
   onSelectExercise,
   showChevron,
+  existingIds = new Set(),
 }: {
   exercises: Exercise[];
   selected: Exercise[];
   onClickExercise?: (ex: Exercise) => void;
   onSelectExercise: (ex: Exercise) => void;
   showChevron: boolean;
+  existingIds?: Set<string>;
 }) {
   if (exercises.length === 0) {
     return (
@@ -362,14 +416,16 @@ function ExerciseListView({
     <div className="divide-y">
       {exercises.map((ex) => {
         const isSelected = selected.some((s) => s.id === ex.id);
+        const isExisting = existingIds.has(ex.id);
         return (
           <div
             key={ex.id}
-            className="flex items-center"
+            className={`flex items-center ${isExisting ? "opacity-50" : ""}`}
           >
             <button
               className="flex-1 flex items-center gap-3 px-4 py-3.5 hover:bg-muted/50 active:bg-muted transition-colors text-left min-w-0"
               onClick={() => {
+                if (isExisting) return;
                 if (showChevron && onClickExercise) {
                   onClickExercise(ex);
                 } else {
@@ -384,11 +440,13 @@ function ExerciseListView({
                   <p className="text-xs text-muted-foreground mt-0.5">{ex.category}</p>
                 )}
               </div>
-              {showChevron && (
+              {isExisting ? (
+                <span className="text-xs text-muted-foreground shrink-0">추가됨</span>
+              ) : showChevron ? (
                 <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
-              )}
+              ) : null}
             </button>
-            {!showChevron && (
+            {!showChevron && !isExisting && (
               <button
                 className={`px-4 py-3.5 shrink-0 transition-colors ${
                   isSelected ? "text-primary" : "text-muted-foreground"
@@ -422,10 +480,12 @@ function SearchResultsView({
   results,
   selected,
   onSelect,
+  existingIds = new Set(),
 }: {
   results: Exercise[];
   selected: Exercise[];
   onSelect: (ex: Exercise) => void;
+  existingIds?: Set<string>;
 }) {
   if (results.length === 0) {
     return (
@@ -440,11 +500,12 @@ function SearchResultsView({
     <div className="divide-y">
       {results.map((ex) => {
         const isSelected = selected.some((s) => s.id === ex.id);
+        const isExisting = existingIds.has(ex.id);
         return (
           <button
             key={ex.id}
-            className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-muted/50 active:bg-muted transition-colors text-left"
-            onClick={() => onSelect(ex)}
+            className={`w-full flex items-center gap-3 px-4 py-3.5 hover:bg-muted/50 active:bg-muted transition-colors text-left ${isExisting ? "opacity-50" : ""}`}
+            onClick={() => { if (!isExisting) onSelect(ex); }}
             data-testid={`button-search-result-${ex.id}`}
           >
             <div className="flex-1 min-w-0">
@@ -460,19 +521,23 @@ function SearchResultsView({
                 )}
               </div>
             </div>
-            <div
-              className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all shrink-0 ${
-                isSelected
-                  ? "border-primary bg-primary"
-                  : "border-muted-foreground/30"
-              }`}
-            >
-              {isSelected && (
-                <svg className="w-3 h-3 text-primary-foreground" viewBox="0 0 12 12" fill="none">
-                  <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
-              )}
-            </div>
+            {isExisting ? (
+              <span className="text-xs text-muted-foreground shrink-0">추가됨</span>
+            ) : (
+              <div
+                className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all shrink-0 ${
+                  isSelected
+                    ? "border-primary bg-primary"
+                    : "border-muted-foreground/30"
+                }`}
+              >
+                {isSelected && (
+                  <svg className="w-3 h-3 text-primary-foreground" viewBox="0 0 12 12" fill="none">
+                    <path d="M2 6l3 3 5-5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                )}
+              </div>
+            )}
           </button>
         );
       })}

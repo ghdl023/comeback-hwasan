@@ -36,7 +36,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { AppShell } from "@/components/app-shell";
-import { ExerciseSelector } from "@/components/exercise-selector";
+import { ExerciseSelector, type ExistingDayExercise } from "@/components/exercise-selector";
 import { SetEditor } from "@/components/set-editor";
 import { SortableExerciseList } from "@/components/sortable-exercise-list";
 import { FloatingTimer } from "@/components/floating-timer";
@@ -723,6 +723,15 @@ export default function DashboardPage() {
   );
   const isTodaySelected = isTodayDate(selectedDate);
 
+  const existingDayExercises: ExistingDayExercise[] = useMemo(() => {
+    return sortedExerciseEntries.map(([exId, exSets]) => {
+      const exercise = exerciseMap.get(exId);
+      if (!exercise) return null;
+      const allCompleted = exSets.length > 0 && exSets.every((s) => s.completed);
+      return { exercise, completed: allCompleted };
+    }).filter((item): item is ExistingDayExercise => item !== null);
+  }, [sortedExerciseEntries, exerciseMap]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-32">
@@ -1375,6 +1384,7 @@ export default function DashboardPage() {
         open={exerciseSelectorOpen}
         onClose={() => setExerciseSelectorOpen(false)}
         onSelect={handleExercisesSelected}
+        existingDayExercises={existingDayExercises}
       />
       {!setEditExerciseId && timerState.mode === "running" && timerTarget && (
         <FloatingTimer
