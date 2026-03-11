@@ -110,6 +110,7 @@ export function SetEditor({
     restingSetIdx,
     startRestTimer: globalStartRestTimer,
     stopTimer: globalStopTimer,
+    clearTimer: globalClearTimer,
     setTimerTarget,
     setOnCompleteSet,
     timerTarget,
@@ -286,6 +287,12 @@ export function SetEditor({
       return;
     }
     setDeleteConfirm(null);
+    if (isTimerForThisExercise && timerState.mode === "running" && timerState.setDocId === s.id) {
+      globalClearTimer();
+    }
+    if (isTimerForThisExercise && effectiveRestingSetIdx === idx) {
+      globalClearTimer();
+    }
     if (!s.isNew) {
       await deleteWorkoutSet(s.id).catch(console.error);
     }

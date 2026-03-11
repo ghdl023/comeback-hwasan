@@ -97,7 +97,7 @@ interface DayInfo {
 export default function DashboardPage() {
   const { user } = useAuth();
   const router = useRouter();
-  const { timerState, timerTarget } = useRestTimer();
+  const { timerState, timerTarget, clearTimer } = useRestTimer();
   const [workouts, setWorkouts] = useState<Workout[]>([]);
   const [sets, setSets] = useState<WorkoutSet[]>([]);
   const [exercises, setExercises] = useState<Exercise[]>([]);
@@ -381,6 +381,9 @@ export default function DashboardPage() {
   const handleDeleteExercise = async (exerciseId: string) => {
     if (!user) return;
     const wIds = dayWorkouts.map((w) => w.id);
+    if (timerTarget?.exerciseId === exerciseId && wIds.includes(timerTarget?.workoutId)) {
+      clearTimer();
+    }
     try {
       await deleteExerciseSetsFromWorkouts(wIds, exerciseId);
       setSets((prev) =>
