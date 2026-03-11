@@ -136,4 +136,26 @@ export interface CalendarSettings {
   displayOrder: CalendarDisplayItem[];
   showDuration: boolean;
   quoteIntervalSeconds: number;
+  quoteIconId: string;
+}
+
+export const QUOTE_ICON_OPTIONS = [
+  { id: "cm01", src: "/images/icon/cm/cm01.png" },
+  { id: "cm02", src: "/images/icon/cm/cm02.png" },
+  { id: "cm03", src: "/images/icon/cm/cm03.png" },
+  { id: "cm04", src: "/images/icon/cm/cm04.png" },
+  { id: "cm05", src: "/images/icon/cm/cm05.jpeg" },
+  { id: "cm06", src: "/images/icon/cm/cm06.png" },
+  { id: "cm07", src: "/images/icon/cm/cm07.png" },
+  { id: "cm08", src: "/images/icon/cm/cm08.png" },
+  { id: "cm09", src: "/images/icon/cm/cm09.png" },
+  { id: "cm10", src: "/images/icon/cm/cm10.png" },
+  { id: "cm11", src: "/images/icon/cm/cm11.jpg" },
+  { id: "cm12", src: "/images/icon/cm/cm12.jpeg" },
+  { id: "cm13", src: "/images/icon/cm/cm13.png" },
+] as const;
+
+export function getQuoteIconSrc(iconId: string): string {
+  const found = QUOTE_ICON_OPTIONS.find((o) => o.id === iconId);
+  return found ? found.src : "/images/청명.png";
 }

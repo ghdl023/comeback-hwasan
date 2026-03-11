@@ -4,8 +4,9 @@ import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
-import { X, GripVertical } from "lucide-react";
+import { GripVertical, Check } from "lucide-react";
 import type { CalendarSettings, CalendarDisplayItem } from "@/lib/types";
+import { QUOTE_ICON_OPTIONS, getQuoteIconSrc } from "@/lib/types";
 
 const QUOTE_INTERVAL_OPTIONS = [
   { value: 30, label: "30초" },
@@ -96,7 +97,7 @@ export function CalendarSettingsModal({
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
       data-testid="calendar-settings-modal"
     >
-      <div className="w-[calc(100%-2rem)] max-w-sm bg-background rounded-2xl shadow-xl overflow-hidden">
+      <div className="w-[calc(100%-2rem)] max-w-sm bg-background rounded-2xl shadow-xl overflow-hidden max-h-[80vh] overflow-y-auto">
         <div className="px-5 pt-5 pb-4 space-y-6">
           <div>
             <h3 className="text-sm font-bold mb-3">캘린더 폰트 크기</h3>
@@ -179,6 +180,45 @@ export function CalendarSettingsModal({
                   data-testid={`button-quote-interval-${opt.value}`}
                 >
                   {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="border-t pt-4">
+            <h3 className="text-sm font-bold mb-2">명언 아이콘</h3>
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-primary shrink-0">
+                <img
+                  src={getQuoteIconSrc(settings.quoteIconId)}
+                  alt="현재 아이콘"
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <span className="text-xs text-muted-foreground">현재 적용된 아이콘</span>
+            </div>
+            <div className="grid grid-cols-5 gap-2">
+              {QUOTE_ICON_OPTIONS.map((opt) => (
+                <button
+                  key={opt.id}
+                  onClick={() => onSettingsChange({ ...settings, quoteIconId: opt.id })}
+                  className={`relative w-full aspect-square rounded-full overflow-hidden border-2 transition-all ${
+                    settings.quoteIconId === opt.id
+                      ? "border-primary ring-2 ring-primary/30 scale-105"
+                      : "border-border hover:border-primary/50"
+                  }`}
+                  data-testid={`button-icon-${opt.id}`}
+                >
+                  <img
+                    src={opt.src}
+                    alt={opt.id}
+                    className="w-full h-full object-cover"
+                  />
+                  {settings.quoteIconId === opt.id && (
+                    <div className="absolute inset-0 bg-primary/20 flex items-center justify-center">
+                      <Check className="h-4 w-4 text-white drop-shadow" />
+                    </div>
+                  )}
                 </button>
               ))}
             </div>

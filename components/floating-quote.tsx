@@ -1,19 +1,20 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import Image from "next/image";
 import { useAuth } from "@/components/auth-provider";
 import { getCalendarSettings } from "@/lib/firebase/firestore";
+import { getQuoteIconSrc } from "@/lib/types";
 
 const ICON_SIZE = 64;
 const AUTO_DISMISS_MS = 10000;
-const BUBBLE_MAX_W = 220;
+const BUBBLE_MAX_W = 240;
 
 export function FloatingQuote() {
   const { user } = useAuth();
   const [mounted, setMounted] = useState(false);
   const [quotes, setQuotes] = useState<string[]>([]);
   const [intervalSeconds, setIntervalSeconds] = useState<number>(30);
+  const [iconSrc, setIconSrc] = useState<string>("/images/icon/cm/cm01.png");
   const [currentQuote, setCurrentQuote] = useState<string | null>(null);
   const [visible, setVisible] = useState(false);
   const [fadeOut, setFadeOut] = useState(false);
@@ -66,16 +67,25 @@ export function FloatingQuote() {
     if (!user?.uid) return;
     getCalendarSettings(user.uid).then((s) => {
       setIntervalSeconds(s.quoteIntervalSeconds);
+      setIconSrc(getQuoteIconSrc(s.quoteIconId));
     }).catch(() => {});
   }, [user?.uid]);
 
   useEffect(() => {
-    const handler = (e: Event) => {
+    const handleInterval = (e: Event) => {
       const val = (e as CustomEvent).detail;
       if (typeof val === "number") setIntervalSeconds(val);
     };
-    window.addEventListener("quote-interval-changed", handler);
-    return () => window.removeEventListener("quote-interval-changed", handler);
+    const handleIcon = (e: Event) => {
+      const val = (e as CustomEvent).detail;
+      if (typeof val === "string") setIconSrc(getQuoteIconSrc(val));
+    };
+    window.addEventListener("quote-interval-changed", handleInterval);
+    window.addEventListener("quote-icon-changed", handleIcon);
+    return () => {
+      window.removeEventListener("quote-interval-changed", handleInterval);
+      window.removeEventListener("quote-icon-changed", handleIcon);
+    };
   }, []);
 
   const clearDismissTimer = useCallback(() => {
@@ -207,7 +217,7 @@ export function FloatingQuote() {
           data-testid="bubble-quote"
         >
           <div className="relative bg-white dark:bg-zinc-800 rounded-xl shadow-lg border border-gray-200 dark:border-zinc-700 px-3 py-2.5">
-            <p className="text-xs leading-relaxed text-gray-800 dark:text-gray-200 break-keep">
+            <p className="text-sm leading-relaxed text-gray-800 dark:text-gray-200 break-keep">
               &ldquo;{currentQuote}&rdquo;
             </p>
             <svg
@@ -242,12 +252,12 @@ export function FloatingQuote() {
         }}
         data-testid="button-floating-quote"
       >
-        <Image
-          src="/images/청명.png"
+        <img
+          src={iconSrc}
           alt="청명"
           width={ICON_SIZE}
           height={ICON_SIZE}
-          className="w-full h-full object-cover pointer-events-none"
+          className="w-full h-full object-cover pointer-events-none rounded-full"
           draggable={false}
         />
       </div>

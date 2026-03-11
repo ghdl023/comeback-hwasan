@@ -430,6 +430,7 @@ export const DEFAULT_CALENDAR_SETTINGS: CalendarSettings = {
   displayOrder: ["workout", "body", "memo"],
   showDuration: true,
   quoteIntervalSeconds: 30,
+  quoteIconId: "cm01",
 };
 
 const VALID_DISPLAY_ITEMS = new Set<CalendarDisplayItem>(["workout", "body", "memo"]);
@@ -458,11 +459,13 @@ export async function getCalendarSettings(userId: string): Promise<CalendarSetti
   const VALID_INTERVALS = [0, 30, 60, 300, 600];
   const rawInterval = typeof data.quoteIntervalSeconds === "number" ? data.quoteIntervalSeconds : DEFAULT_CALENDAR_SETTINGS.quoteIntervalSeconds;
   const quoteIntervalSeconds = VALID_INTERVALS.includes(rawInterval) ? rawInterval : DEFAULT_CALENDAR_SETTINGS.quoteIntervalSeconds;
+  const quoteIconId = typeof data.quoteIconId === "string" && data.quoteIconId ? data.quoteIconId : DEFAULT_CALENDAR_SETTINGS.quoteIconId;
   return {
     fontSize,
     displayOrder: normalizeDisplayOrder(data.displayOrder),
     showDuration: typeof data.showDuration === "boolean" ? data.showDuration : DEFAULT_CALENDAR_SETTINGS.showDuration,
     quoteIntervalSeconds,
+    quoteIconId,
   };
 }
 

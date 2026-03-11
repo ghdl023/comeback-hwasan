@@ -783,6 +783,7 @@ export default function DashboardPage() {
         }
       }, 500);
       window.dispatchEvent(new CustomEvent("quote-interval-changed", { detail: newSettings.quoteIntervalSeconds }));
+      window.dispatchEvent(new CustomEvent("quote-icon-changed", { detail: newSettings.quoteIconId }));
     },
     [user],
   );
@@ -834,8 +835,12 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-32">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black">
+        <img
+          src="/images/background/bg-app-loading.jpg"
+          alt="로딩"
+          className="w-full h-full object-cover"
+        />
       </div>
     );
   }
@@ -1398,12 +1403,18 @@ export default function DashboardPage() {
                     const sel = isSelected(date);
                     const isSunday = date.getDay() === 0;
                     const isSaturday = date.getDay() === 6;
+                    const hasWorkout = info && info.workoutCount > 0 && isCurrentMonth;
                     return (
                       <button
                         key={`${wIdx}-${dIdx}`}
-                        className={`p-0.5 flex flex-col items-center transition-colors overflow-hidden ${sel ? "bg-primary/5" : ""} ${!isCurrentMonth ? "opacity-40" : ""}`}
+                        className={`p-0.5 flex flex-col items-center transition-colors overflow-hidden relative ${sel ? "bg-primary/5" : ""} ${!isCurrentMonth ? "opacity-40" : ""}`}
                         onClick={() => handleDateClick(date)}
                         data-testid={`button-date-${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`}
+                        style={hasWorkout ? {
+                          backgroundImage: "url(/images/icon/maehwa.jpg)",
+                          backgroundSize: "cover",
+                          backgroundPosition: "center",
+                        } : undefined}
                       >
                         <div
                           className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium shrink-0 ${
