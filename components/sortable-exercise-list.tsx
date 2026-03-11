@@ -145,13 +145,13 @@ function SortableExerciseCard({
         {isExpanded && (
           <div className="px-3.5 py-1.5 border-t border-muted/40 bg-muted/20">
             <div className="grid grid-cols-3 gap-0 text-[10px] font-medium text-muted-foreground uppercase tracking-wider pb-1">
-              <span>세트</span><span>횟수 / 무게</span><span>휴식</span>
+              <span>세트</span><span>무게 / 횟수</span><span>휴식</span>
             </div>
             {exSets.map((s) => (
               <div key={s.id} className="grid grid-cols-3 gap-0 text-sm py-1 border-t border-muted/30" data-testid={`row-set-${s.id}`}>
                 <span className="font-mono text-xs text-muted-foreground">{s.set_number}</span>
                 <span className="text-xs">
-                  {s.reps ?? "-"}회 / {s.weight ? `${Number(s.weight)}kg` : "-"}
+                  {s.weight ? `${Number(s.weight)}kg` : "-"} / {s.reps ?? "-"}회
                 </span>
                 <span className="text-xs text-muted-foreground">
                   {s.rest_seconds
