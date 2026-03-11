@@ -871,6 +871,16 @@ export default function DashboardPage() {
                   dayWorkouts.some((w) => w.id === s.workout_id)
                 ),
             );
+            const firstOrigIdx = prev.findIndex(
+              (s) =>
+                s.exercise_id === setEditExerciseId &&
+                dayWorkouts.some((w) => w.id === s.workout_id)
+            );
+            if (firstOrigIdx >= 0) {
+              const before = otherSets.slice(0, firstOrigIdx);
+              const after = otherSets.slice(firstOrigIdx);
+              return [...before, ...updatedSets, ...after];
+            }
             return [...otherSets, ...updatedSets];
           });
         }}

@@ -141,6 +141,21 @@ export function SetEditor({
   const localSetsRef = useRef(localSets);
   localSetsRef.current = localSets;
 
+  const syncToParent = useCallback((updatedLocal: LocalSet[]) => {
+    const synced = updatedLocal.map((s) => ({
+      id: s.id,
+      workout_id: s.workout_id,
+      exercise_id: s.exercise_id,
+      set_number: s.set_number,
+      weight: s.weight,
+      reps: s.reps,
+      rest_seconds: s.rest_seconds,
+      completed: s.completed,
+      created_at: sets.find((orig) => orig.id === s.id)?.created_at || new Date().toISOString(),
+    }));
+    onSetsChanged(synced);
+  }, [sets, onSetsChanged]);
+
   useEffect(() => {
     if (!isTimerForThisExercise) return;
     const handler = (idx: number) => {
@@ -149,6 +164,7 @@ export function SetEditor({
         if (updated[idx] && !updated[idx].isNew) {
           updateWorkoutSet(updated[idx].id, { completed: true }).catch(console.error);
         }
+        syncToParent(updated);
         return updated;
       });
     };
@@ -156,7 +172,7 @@ export function SetEditor({
     return () => {
       setOnCompleteSet(undefined);
     };
-  }, [isTimerForThisExercise, setOnCompleteSet]);
+  }, [isTimerForThisExercise, setOnCompleteSet, syncToParent]);
 
   useEffect(() => {
     return () => {
@@ -178,12 +194,13 @@ export function SetEditor({
         if (updated[completeOldIdx] && !updated[completeOldIdx].isNew) {
           updateWorkoutSet(updated[completeOldIdx].id, { completed: true }).catch(console.error);
         }
+        syncToParent(updated);
         return updated;
       });
     }
     const docId = localSetsRef.current[setIdx]?.id || "";
     globalStartRestTimer(setIdx, restMmss, docId);
-  }, [exerciseId, exercise?.name, workoutId, date, setTimerTarget, globalStartRestTimer, setRestingSetIdx]);
+  }, [exerciseId, exercise?.name, workoutId, date, setTimerTarget, globalStartRestTimer, setRestingSetIdx, syncToParent]);
 
   const stopTimer = useCallback((currentSetIdx: number) => {
     globalStopTimer(currentSetIdx);
@@ -227,6 +244,7 @@ export function SetEditor({
       if (!updated[idx].isNew) {
         updateWorkoutSet(updated[idx].id, { completed: false }).catch(console.error);
       }
+      syncToParent(updated);
       return updated;
     });
     setConfirmResetIdx(null);
@@ -242,6 +260,7 @@ export function SetEditor({
     setLocalSets((prev) => {
       const updated = prev.map((p, i) => (i === idx ? { ...p, [field]: value } : p));
       debouncedSave(updated[idx]);
+      syncToParent(updated);
       return updated;
     });
   };
@@ -255,6 +274,7 @@ export function SetEditor({
         return { ...p, [field]: newVal };
       });
       debouncedSave(updated[idx]);
+      syncToParent(updated);
       return updated;
     });
   };
@@ -271,7 +291,9 @@ export function SetEditor({
     }
     setLocalSets((prev) => {
       const filtered = prev.filter((_, i) => i !== idx);
-      return filtered.map((p, i) => ({ ...p, set_number: i + 1 }));
+      const renumbered = filtered.map((p, i) => ({ ...p, set_number: i + 1 }));
+      syncToParent(renumbered);
+      return renumbered;
     });
   };
 
@@ -289,19 +311,21 @@ export function SetEditor({
         rest_seconds: lastSet?.rest_seconds ?? 130,
         completed: false,
       });
-      setLocalSets((prev) => [
-        ...prev,
-        {
-          id: created.id,
-          set_number: newSetNumber,
-          weight: lastSet?.weight ?? 10,
-          reps: lastSet?.reps ?? 15,
-          rest_seconds: lastSet?.rest_seconds ?? 130,
-          completed: false,
-          workout_id: workoutId,
-          exercise_id: exerciseId,
-        },
-      ]);
+      const newLocal: LocalSet = {
+        id: created.id,
+        set_number: newSetNumber,
+        weight: lastSet?.weight ?? 10,
+        reps: lastSet?.reps ?? 15,
+        rest_seconds: lastSet?.rest_seconds ?? 130,
+        completed: false,
+        workout_id: workoutId,
+        exercise_id: exerciseId,
+      };
+      setLocalSets((prev) => {
+        const updated = [...prev, newLocal];
+        syncToParent(updated);
+        return updated;
+      });
     } catch (err) {
       console.error("Add set error:", err);
     } finally {
@@ -579,6 +603,7 @@ export function SetEditor({
           sets={localSets}
           onApply={(updated) => {
             setLocalSets(updated);
+            syncToParent(updated);
             setBulkEditOpen(false);
           }}
           onCancel={() => setBulkEditOpen(false)}
@@ -595,6 +620,7 @@ export function SetEditor({
                 }
               }
               setLocalSets(updated);
+              syncToParent(updated);
               setBulkEditOpen(false);
             } catch (err) {
               console.error("Bulk save error:", err);
