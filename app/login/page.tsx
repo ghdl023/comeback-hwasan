@@ -52,8 +52,12 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4">
-      <div className="w-full max-w-xs text-center space-y-8">
+    <div className="min-h-screen flex items-center justify-center px-4 relative">
+      <div
+        className="absolute inset-0 bg-cover bg-center"
+        style={{ backgroundImage: "url(/images/background/bg-app-loading.jpg)", opacity: 0.15 }}
+      />
+      <div className="w-full max-w-xs text-center space-y-8 relative z-10">
         <div className="space-y-4">
           <div className="inline-flex items-center justify-center w-24 h-24 rounded-full overflow-hidden mx-auto">
             <img src="/images/icon/maehwa.jpg" alt="매화" className="w-full h-full object-cover" />
