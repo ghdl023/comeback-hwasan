@@ -22,10 +22,26 @@ export function FloatingQuote() {
 
   useEffect(() => {
     if (position.x === -1 && position.y === -1) {
-      setPosition({
+      const fallback = {
         x: window.innerWidth - 16 - ICON_SIZE,
         y: window.innerHeight - 80 - ICON_SIZE,
-      });
+      };
+      const tryFindToday = () => {
+        const now = new Date();
+        const testId = `button-date-${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}`;
+        const el = document.querySelector(`[data-testid="${testId}"]`);
+        if (el) {
+          const rect = el.getBoundingClientRect();
+          setPosition({
+            x: Math.max(0, Math.min(rect.left - ICON_SIZE / 2, window.innerWidth - ICON_SIZE)),
+            y: Math.max(0, Math.min(rect.bottom - ICON_SIZE / 3, window.innerHeight - ICON_SIZE)),
+          });
+        } else {
+          setPosition(fallback);
+        }
+      };
+      const timer = setTimeout(tryFindToday, 500);
+      return () => clearTimeout(timer);
     }
   }, [position]);
 
