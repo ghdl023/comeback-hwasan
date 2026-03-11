@@ -14,6 +14,7 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [autoLogin, setAutoLogin] = useState(true);
 
   useEffect(() => {
     if (!loading && user) {
@@ -30,7 +31,7 @@ export default function LoginPage() {
     setError("");
     setSubmitting(true);
     try {
-      await signInWithEmail(email);
+      await signInWithEmail(email, autoLogin);
       router.replace("/dashboard");
     } catch (err: unknown) {
       if (err instanceof Error) {
@@ -83,6 +84,18 @@ export default function LoginPage() {
               </p>
             )}
           </div>
+
+          <label className="flex items-center justify-center gap-2 cursor-pointer select-none">
+            <input
+              type="checkbox"
+              checked={autoLogin}
+              onChange={(e) => setAutoLogin(e.target.checked)}
+              className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary accent-primary"
+              data-testid="checkbox-auto-login"
+            />
+            <span className="text-sm text-muted-foreground">자동 로그인</span>
+          </label>
+
           <Button
             type="submit"
             className="w-full"

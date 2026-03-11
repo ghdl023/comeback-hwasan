@@ -17,12 +17,14 @@ export function FloatingQuote() {
   const dragStartRef = useRef({ x: 0, y: 0, posX: 0, posY: 0 });
   const hasDraggedRef = useRef(false);
   const btnRef = useRef<HTMLDivElement>(null);
+  const justOpenedRef = useRef(false);
+  const ICON_SIZE = 64;
 
   useEffect(() => {
     if (position.x === -1 && position.y === -1) {
       setPosition({
-        x: window.innerWidth - 16 - 56,
-        y: window.innerHeight - 80 - 56,
+        x: window.innerWidth - 16 - ICON_SIZE,
+        y: window.innerHeight - 80 - ICON_SIZE,
       });
     }
   }, [position]);
@@ -40,6 +42,10 @@ export function FloatingQuote() {
     setCurrentQuote(quotes[idx]);
     setVisible(true);
     setFadeOut(false);
+    justOpenedRef.current = true;
+    setTimeout(() => {
+      justOpenedRef.current = false;
+    }, 300);
   }, [quotes]);
 
   useEffect(() => {
@@ -56,6 +62,7 @@ export function FloatingQuote() {
   }, [visible, currentQuote]);
 
   const handleClose = useCallback(() => {
+    if (justOpenedRef.current) return;
     setFadeOut(true);
     setTimeout(() => {
       setVisible(false);
@@ -65,15 +72,16 @@ export function FloatingQuote() {
   }, []);
 
   const clampPosition = useCallback((x: number, y: number) => {
-    const size = 56;
     return {
-      x: Math.max(0, Math.min(window.innerWidth - size, x)),
-      y: Math.max(0, Math.min(window.innerHeight - size, y)),
+      x: Math.max(0, Math.min(window.innerWidth - ICON_SIZE, x)),
+      y: Math.max(0, Math.min(window.innerHeight - ICON_SIZE, y)),
     };
   }, []);
 
   const handlePointerDown = useCallback(
     (e: React.PointerEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
       draggingRef.current = true;
       hasDraggedRef.current = false;
       dragStartRef.current = {
@@ -82,7 +90,7 @@ export function FloatingQuote() {
         posX: position.x,
         posY: position.y,
       };
-      (e.target as HTMLElement).setPointerCapture(e.pointerId);
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     },
     [position],
   );
@@ -90,6 +98,7 @@ export function FloatingQuote() {
   const handlePointerMove = useCallback(
     (e: React.PointerEvent) => {
       if (!draggingRef.current) return;
+      e.preventDefault();
       const dx = e.clientX - dragStartRef.current.x;
       const dy = e.clientY - dragStartRef.current.y;
       if (Math.abs(dx) > 4 || Math.abs(dy) > 4) {
@@ -104,12 +113,18 @@ export function FloatingQuote() {
     [clampPosition],
   );
 
-  const handlePointerUp = useCallback(() => {
-    draggingRef.current = false;
-    if (!hasDraggedRef.current) {
-      showRandomQuote();
-    }
-  }, [showRandomQuote]);
+  const handlePointerUp = useCallback(
+    (e: React.PointerEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const wasDragging = draggingRef.current;
+      draggingRef.current = false;
+      if (wasDragging && !hasDraggedRef.current) {
+        showRandomQuote();
+      }
+    },
+    [showRandomQuote],
+  );
 
   if (!user || position.x === -1) return null;
 
@@ -120,10 +135,12 @@ export function FloatingQuote() {
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
-        className="fixed z-50 w-14 h-14 rounded-full shadow-lg hover:shadow-xl bg-white dark:bg-zinc-800 flex items-center justify-center cursor-grab active:cursor-grabbing select-none touch-none"
+        className="fixed z-50 rounded-full shadow-lg hover:shadow-xl flex items-center justify-center cursor-grab active:cursor-grabbing select-none touch-none"
         style={{
           left: position.x,
           top: position.y,
+          width: ICON_SIZE,
+          height: ICON_SIZE,
           overflow: "hidden",
         }}
         data-testid="button-floating-quote"
@@ -131,8 +148,8 @@ export function FloatingQuote() {
         <Image
           src="/images/청명.png"
           alt="청명"
-          width={56}
-          height={56}
+          width={ICON_SIZE}
+          height={ICON_SIZE}
           className="w-full h-full object-cover pointer-events-none"
           draggable={false}
         />
@@ -143,14 +160,17 @@ export function FloatingQuote() {
           className={`fixed inset-0 z-[100] flex items-center justify-center px-6 transition-opacity duration-500 ${
             fadeOut ? "opacity-0" : "opacity-100"
           }`}
-          onClick={handleClose}
+          onPointerUp={(e) => {
+            e.stopPropagation();
+            handleClose();
+          }}
         >
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
           <div
             className={`relative max-w-sm w-full bg-white/95 dark:bg-zinc-900/95 rounded-2xl shadow-2xl p-6 transition-all duration-500 ${
               fadeOut ? "scale-95 opacity-0" : "scale-100 opacity-100 animate-in fade-in zoom-in-95"
             }`}
-            onClick={(e) => e.stopPropagation()}
+            onPointerUp={(e) => e.stopPropagation()}
           >
             <button
               onClick={handleClose}

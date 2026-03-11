@@ -13,13 +13,17 @@ import {
 import { upsertUserOnLogin, getUser, getUserByEmail } from "@/lib/firebase/firestore";
 import type { AppUser } from "@/lib/types";
 
+const AUTO_LOGIN_KEY = "temp_auth_uid";
+const AUTO_LOGIN_EXPIRY_KEY = "temp_auth_expiry";
+const AUTO_LOGIN_DURATION_DAYS = 30;
+
 interface AuthContextType {
   user: User | null;
   appUser: AppUser | null;
   idToken: string | null;
   loading: boolean;
   signInWithGoogle: () => Promise<void>;
-  signInWithEmail: (email: string) => Promise<AppUser>;
+  signInWithEmail: (email: string, autoLogin: boolean) => Promise<AppUser>;
   signOut: () => Promise<void>;
 }
 
@@ -37,6 +41,54 @@ const googleProvider = new GoogleAuthProvider();
 
 // TODO: 구글 로그인 인증 복구 후 임시 이메일 로그인 제거하고 원래 로직 복원
 
+function getSavedAuth(): string | null {
+  try {
+    const uid = localStorage.getItem(AUTO_LOGIN_KEY);
+    const expiry = localStorage.getItem(AUTO_LOGIN_EXPIRY_KEY);
+    if (!uid) {
+      const sessionUid = sessionStorage.getItem(AUTO_LOGIN_KEY);
+      return sessionUid;
+    }
+    if (expiry && Date.now() > Number(expiry)) {
+      localStorage.removeItem(AUTO_LOGIN_KEY);
+      localStorage.removeItem(AUTO_LOGIN_EXPIRY_KEY);
+      return null;
+    }
+    return uid;
+  } catch {
+    return null;
+  }
+}
+
+function saveAuth(uid: string, autoLogin: boolean) {
+  try {
+    if (autoLogin) {
+      localStorage.setItem(AUTO_LOGIN_KEY, uid);
+      localStorage.setItem(
+        AUTO_LOGIN_EXPIRY_KEY,
+        String(Date.now() + AUTO_LOGIN_DURATION_DAYS * 24 * 60 * 60 * 1000)
+      );
+      sessionStorage.removeItem(AUTO_LOGIN_KEY);
+    } else {
+      sessionStorage.setItem(AUTO_LOGIN_KEY, uid);
+      localStorage.removeItem(AUTO_LOGIN_KEY);
+      localStorage.removeItem(AUTO_LOGIN_EXPIRY_KEY);
+    }
+  } catch {
+    // ignore
+  }
+}
+
+function clearAuth() {
+  try {
+    localStorage.removeItem(AUTO_LOGIN_KEY);
+    localStorage.removeItem(AUTO_LOGIN_EXPIRY_KEY);
+    sessionStorage.removeItem(AUTO_LOGIN_KEY);
+  } catch {
+    // ignore
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [appUser, setAppUser] = useState<AppUser | null>(null);
@@ -44,7 +96,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const savedUid = sessionStorage.getItem("temp_auth_uid");
+    const savedUid = getSavedAuth();
     if (savedUid) {
       getUser(savedUid).then((u) => {
         if (u) {
@@ -56,6 +108,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           } as unknown as User;
           setUser(mockUser);
           setAppUser(u);
+        } else {
+          clearAuth();
         }
         setLoading(false);
       }).catch(() => {
@@ -103,7 +157,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   //   return () => clearInterval(interval);
   // }, [idToken]);
 
-  const signInWithEmail = useCallback(async (email: string): Promise<AppUser> => {
+  const signInWithEmail = useCallback(async (email: string, autoLogin: boolean): Promise<AppUser> => {
     const foundUser = await getUserByEmail(email.trim().toLowerCase());
     if (!foundUser) {
       throw new Error("등록되지 않은 이메일입니다.");
@@ -116,7 +170,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } as unknown as User;
     setUser(mockUser);
     setAppUser(foundUser);
-    sessionStorage.setItem("temp_auth_uid", foundUser.uid);
+    saveAuth(foundUser.uid, autoLogin);
     return foundUser;
   }, []);
 
@@ -144,7 +198,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setAppUser(null);
     setIdToken(null);
-    sessionStorage.removeItem("temp_auth_uid");
+    clearAuth();
     window.location.href = "/login";
     // TODO: 구글 로그인 인증 복구 후 아래 주석 해제
     // await firebaseSignOut(auth);
