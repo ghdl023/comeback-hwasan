@@ -2,8 +2,12 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import Image from "next/image";
-import { X } from "lucide-react";
 import { useAuth } from "@/components/auth-provider";
+
+const ICON_SIZE = 64;
+const AUTO_DISMISS_MS = 10000;
+const AUTO_SHOW_INTERVAL_MS = 30000;
+const BUBBLE_MAX_W = 220;
 
 export function FloatingQuote() {
   const { user } = useAuth();
@@ -17,8 +21,8 @@ export function FloatingQuote() {
   const dragStartRef = useRef({ x: 0, y: 0, posX: 0, posY: 0 });
   const hasDraggedRef = useRef(false);
   const btnRef = useRef<HTMLDivElement>(null);
-  const justOpenedRef = useRef(false);
-  const ICON_SIZE = 64;
+  const dismissTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const autoTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     if (position.x === -1 && position.y === -1) {
@@ -54,40 +58,52 @@ export function FloatingQuote() {
       .catch(console.error);
   }, []);
 
-  const showRandomQuote = useCallback(() => {
-    if (quotes.length === 0) return;
-    const idx = Math.floor(Math.random() * quotes.length);
-    setCurrentQuote(quotes[idx]);
-    setVisible(true);
-    setFadeOut(false);
-    justOpenedRef.current = true;
-    setTimeout(() => {
-      justOpenedRef.current = false;
-    }, 300);
-  }, [quotes]);
+  const clearDismissTimer = useCallback(() => {
+    if (dismissTimerRef.current) {
+      clearTimeout(dismissTimerRef.current);
+      dismissTimerRef.current = null;
+    }
+  }, []);
 
-  useEffect(() => {
-    if (!visible) return;
-    const timer = setTimeout(() => {
-      setFadeOut(true);
-      setTimeout(() => {
-        setVisible(false);
-        setCurrentQuote(null);
-        setFadeOut(false);
-      }, 500);
-    }, 5000);
-    return () => clearTimeout(timer);
-  }, [visible, currentQuote]);
-
-  const handleClose = useCallback(() => {
-    if (justOpenedRef.current) return;
+  const dismissQuote = useCallback(() => {
+    clearDismissTimer();
     setFadeOut(true);
     setTimeout(() => {
       setVisible(false);
       setCurrentQuote(null);
       setFadeOut(false);
-    }, 300);
-  }, []);
+    }, 400);
+  }, [clearDismissTimer]);
+
+  const showRandomQuote = useCallback(() => {
+    if (quotes.length === 0) return;
+    clearDismissTimer();
+    const idx = Math.floor(Math.random() * quotes.length);
+    setCurrentQuote(quotes[idx]);
+    setVisible(true);
+    setFadeOut(false);
+    dismissTimerRef.current = setTimeout(() => {
+      dismissQuote();
+    }, AUTO_DISMISS_MS);
+  }, [quotes, clearDismissTimer, dismissQuote]);
+
+  useEffect(() => {
+    if (quotes.length === 0 || !user) return;
+    autoTimerRef.current = setInterval(() => {
+      showRandomQuote();
+    }, AUTO_SHOW_INTERVAL_MS);
+    return () => {
+      if (autoTimerRef.current) clearInterval(autoTimerRef.current);
+    };
+  }, [quotes, user, showRandomQuote]);
+
+  const handleIconTap = useCallback(() => {
+    if (visible) {
+      dismissQuote();
+    } else {
+      showRandomQuote();
+    }
+  }, [visible, dismissQuote, showRandomQuote]);
 
   const clampPosition = useCallback((x: number, y: number) => {
     return {
@@ -138,16 +154,59 @@ export function FloatingQuote() {
       const wasDragging = draggingRef.current;
       draggingRef.current = false;
       if (wasDragging && !hasDraggedRef.current) {
-        showRandomQuote();
+        handleIconTap();
       }
     },
-    [showRandomQuote],
+    [handleIconTap],
   );
 
   if (!user || position.x === -1) return null;
 
+  const bubbleLeft = Math.max(
+    8,
+    Math.min(position.x + ICON_SIZE / 2 - BUBBLE_MAX_W / 2, window.innerWidth - BUBBLE_MAX_W - 8)
+  );
+  const bubbleBottom = window.innerHeight - position.y + 8;
+  const arrowLeft = position.x + ICON_SIZE / 2 - bubbleLeft;
+
   return (
     <>
+      {visible && currentQuote && (
+        <div
+          className={`fixed z-[49] transition-opacity duration-400 ${fadeOut ? "opacity-0" : "opacity-100"}`}
+          style={{
+            left: bubbleLeft,
+            bottom: bubbleBottom,
+            maxWidth: BUBBLE_MAX_W,
+            pointerEvents: "auto",
+          }}
+          onPointerUp={(e) => {
+            e.stopPropagation();
+            dismissQuote();
+          }}
+          data-testid="bubble-quote"
+        >
+          <div className="relative bg-white dark:bg-zinc-800 rounded-xl shadow-lg border border-gray-200 dark:border-zinc-700 px-3 py-2.5">
+            <p className="text-xs leading-relaxed text-gray-800 dark:text-gray-200 break-keep">
+              &ldquo;{currentQuote}&rdquo;
+            </p>
+            <svg
+              className="absolute"
+              width="14"
+              height="8"
+              viewBox="0 0 14 8"
+              style={{
+                bottom: -8,
+                left: Math.max(12, Math.min(arrowLeft - 7, BUBBLE_MAX_W - 26)),
+              }}
+            >
+              <path d="M0 0 L7 8 L14 0" className="fill-gray-200 dark:fill-zinc-700" />
+              <path d="M1 0 L7 6.5 L13 0" className="fill-white dark:fill-zinc-800" />
+            </svg>
+          </div>
+        </div>
+      )}
+
       <div
         ref={btnRef}
         onPointerDown={handlePointerDown}
@@ -172,49 +231,6 @@ export function FloatingQuote() {
           draggable={false}
         />
       </div>
-
-      {visible && currentQuote && (
-        <div
-          className={`fixed inset-0 z-[100] flex items-center justify-center px-6 transition-opacity duration-500 ${
-            fadeOut ? "opacity-0" : "opacity-100"
-          }`}
-          onPointerUp={(e) => {
-            e.stopPropagation();
-            handleClose();
-          }}
-        >
-          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
-          <div
-            className={`relative max-w-sm w-full bg-white/95 dark:bg-zinc-900/95 rounded-2xl shadow-2xl p-6 transition-all duration-500 ${
-              fadeOut ? "scale-95 opacity-0" : "scale-100 opacity-100 animate-in fade-in zoom-in-95"
-            }`}
-            onPointerUp={(e) => e.stopPropagation()}
-          >
-            <button
-              onClick={handleClose}
-              className="absolute top-3 right-3 p-1 rounded-full hover:bg-gray-200 dark:hover:bg-zinc-700 transition-colors"
-              data-testid="button-close-quote"
-            >
-              <X className="h-4 w-4 text-muted-foreground" />
-            </button>
-            <div className="flex items-start gap-3 mb-3">
-              <div className="w-8 h-8 rounded-full overflow-hidden shrink-0 mt-0.5">
-                <Image
-                  src="/images/청명.png"
-                  alt="청명"
-                  width={32}
-                  height={32}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              <span className="text-xs font-semibold text-primary mt-2">청명</span>
-            </div>
-            <p className="text-sm leading-relaxed text-gray-800 dark:text-gray-200 break-keep">
-              &ldquo;{currentQuote}&rdquo;
-            </p>
-          </div>
-        </div>
-      )}
     </>
   );
 }
