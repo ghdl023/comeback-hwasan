@@ -32,9 +32,11 @@ export function FloatingQuote() {
         const el = document.querySelector(`[data-testid="${testId}"]`);
         if (el) {
           const rect = el.getBoundingClientRect();
+          const cx = rect.left + rect.width / 2 - ICON_SIZE / 2;
+          const cy = rect.top + rect.height / 2 - ICON_SIZE / 2;
           setPosition({
-            x: Math.max(0, Math.min(rect.left - ICON_SIZE / 2, window.innerWidth - ICON_SIZE)),
-            y: Math.max(0, Math.min(rect.bottom - ICON_SIZE / 3, window.innerHeight - ICON_SIZE)),
+            x: Math.max(0, Math.min(cx, window.innerWidth - ICON_SIZE)),
+            y: Math.max(0, Math.min(cy, window.innerHeight - ICON_SIZE)),
           });
         } else {
           setPosition(fallback);
