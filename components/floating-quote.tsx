@@ -3,20 +3,24 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import Image from "next/image";
 import { useAuth } from "@/components/auth-provider";
+import { getCalendarSettings } from "@/lib/firebase/firestore";
 
 const ICON_SIZE = 64;
 const AUTO_DISMISS_MS = 10000;
-const AUTO_SHOW_INTERVAL_MS = 30000;
 const BUBBLE_MAX_W = 220;
 
 export function FloatingQuote() {
   const { user } = useAuth();
+  const [mounted, setMounted] = useState(false);
   const [quotes, setQuotes] = useState<string[]>([]);
+  const [intervalSeconds, setIntervalSeconds] = useState<number>(30);
   const [currentQuote, setCurrentQuote] = useState<string | null>(null);
   const [visible, setVisible] = useState(false);
   const [fadeOut, setFadeOut] = useState(false);
 
   const [position, setPosition] = useState({ x: -1, y: -1 });
+
+  useEffect(() => { setMounted(true); }, []);
   const draggingRef = useRef(false);
   const dragStartRef = useRef({ x: 0, y: 0, posX: 0, posY: 0 });
   const hasDraggedRef = useRef(false);
@@ -58,6 +62,22 @@ export function FloatingQuote() {
       .catch(console.error);
   }, []);
 
+  useEffect(() => {
+    if (!user?.uid) return;
+    getCalendarSettings(user.uid).then((s) => {
+      setIntervalSeconds(s.quoteIntervalSeconds);
+    }).catch(() => {});
+  }, [user?.uid]);
+
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const val = (e as CustomEvent).detail;
+      if (typeof val === "number") setIntervalSeconds(val);
+    };
+    window.addEventListener("quote-interval-changed", handler);
+    return () => window.removeEventListener("quote-interval-changed", handler);
+  }, []);
+
   const clearDismissTimer = useCallback(() => {
     if (dismissTimerRef.current) {
       clearTimeout(dismissTimerRef.current);
@@ -88,14 +108,14 @@ export function FloatingQuote() {
   }, [quotes, clearDismissTimer, dismissQuote]);
 
   useEffect(() => {
-    if (quotes.length === 0 || !user) return;
+    if (quotes.length === 0 || !user || intervalSeconds <= 0) return;
     autoTimerRef.current = setInterval(() => {
       showRandomQuote();
-    }, AUTO_SHOW_INTERVAL_MS);
+    }, intervalSeconds * 1000);
     return () => {
       if (autoTimerRef.current) clearInterval(autoTimerRef.current);
     };
-  }, [quotes, user, showRandomQuote]);
+  }, [quotes, user, showRandomQuote, intervalSeconds]);
 
   const handleIconTap = useCallback(() => {
     if (visible) {
@@ -160,7 +180,7 @@ export function FloatingQuote() {
     [handleIconTap],
   );
 
-  if (!user || position.x === -1) return null;
+  if (!mounted || !user || position.x === -1) return null;
 
   const bubbleLeft = Math.max(
     8,

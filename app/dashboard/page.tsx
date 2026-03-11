@@ -782,6 +782,7 @@ export default function DashboardPage() {
           saveCalendarSettings(user.uid, newSettings).catch(console.error);
         }
       }, 500);
+      window.dispatchEvent(new CustomEvent("quote-interval-changed", { detail: newSettings.quoteIntervalSeconds }));
     },
     [user],
   );

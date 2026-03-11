@@ -135,4 +135,5 @@ export interface CalendarSettings {
   fontSize: number;
   displayOrder: CalendarDisplayItem[];
   showDuration: boolean;
+  quoteIntervalSeconds: number;
 }

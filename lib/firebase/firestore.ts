@@ -429,6 +429,7 @@ export const DEFAULT_CALENDAR_SETTINGS: CalendarSettings = {
   fontSize: 8,
   displayOrder: ["workout", "body", "memo"],
   showDuration: true,
+  quoteIntervalSeconds: 30,
 };
 
 const VALID_DISPLAY_ITEMS = new Set<CalendarDisplayItem>(["workout", "body", "memo"]);
@@ -454,10 +455,14 @@ export async function getCalendarSettings(userId: string): Promise<CalendarSetti
   if (!snap.exists()) return { ...DEFAULT_CALENDAR_SETTINGS };
   const data = snap.data();
   const fontSize = typeof data.fontSize === "number" ? Math.min(10, Math.max(6, data.fontSize)) : DEFAULT_CALENDAR_SETTINGS.fontSize;
+  const VALID_INTERVALS = [0, 30, 60, 300, 600];
+  const rawInterval = typeof data.quoteIntervalSeconds === "number" ? data.quoteIntervalSeconds : DEFAULT_CALENDAR_SETTINGS.quoteIntervalSeconds;
+  const quoteIntervalSeconds = VALID_INTERVALS.includes(rawInterval) ? rawInterval : DEFAULT_CALENDAR_SETTINGS.quoteIntervalSeconds;
   return {
     fontSize,
     displayOrder: normalizeDisplayOrder(data.displayOrder),
     showDuration: typeof data.showDuration === "boolean" ? data.showDuration : DEFAULT_CALENDAR_SETTINGS.showDuration,
+    quoteIntervalSeconds,
   };
 }
 

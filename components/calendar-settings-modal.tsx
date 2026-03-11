@@ -7,6 +7,14 @@ import { Slider } from "@/components/ui/slider";
 import { X, GripVertical } from "lucide-react";
 import type { CalendarSettings, CalendarDisplayItem } from "@/lib/types";
 
+const QUOTE_INTERVAL_OPTIONS = [
+  { value: 30, label: "30초" },
+  { value: 60, label: "1분" },
+  { value: 300, label: "5분" },
+  { value: 600, label: "10분" },
+  { value: 0, label: "끄기" },
+];
+
 interface CalendarSettingsModalProps {
   open: boolean;
   onClose: () => void;
@@ -153,6 +161,26 @@ export function CalendarSettingsModal({
                 onCheckedChange={handleDurationToggle}
                 data-testid="toggle-show-duration"
               />
+            </div>
+          </div>
+
+          <div className="border-t pt-4">
+            <h3 className="text-sm font-bold mb-3">명언 자동 노출 주기</h3>
+            <div className="flex flex-wrap gap-2">
+              {QUOTE_INTERVAL_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => onSettingsChange({ ...settings, quoteIntervalSeconds: opt.value })}
+                  className={`px-3 py-1.5 rounded-lg border text-sm font-medium transition-all ${
+                    settings.quoteIntervalSeconds === opt.value
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border bg-card text-foreground"
+                  }`}
+                  data-testid={`button-quote-interval-${opt.value}`}
+                >
+                  {opt.label}
+                </button>
+              ))}
             </div>
           </div>
         </div>
