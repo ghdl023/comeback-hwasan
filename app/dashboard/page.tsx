@@ -1403,18 +1403,12 @@ export default function DashboardPage() {
                     const sel = isSelected(date);
                     const isSunday = date.getDay() === 0;
                     const isSaturday = date.getDay() === 6;
-                    const hasWorkout = info && info.workoutCount > 0 && isCurrentMonth;
                     return (
                       <button
                         key={`${wIdx}-${dIdx}`}
-                        className={`p-0.5 flex flex-col items-center transition-colors overflow-hidden relative ${sel ? "bg-primary/5" : ""} ${!isCurrentMonth ? "opacity-40" : ""}`}
+                        className={`p-0.5 flex flex-col items-center transition-colors overflow-hidden ${sel ? "bg-primary/5" : ""} ${!isCurrentMonth ? "opacity-40" : ""}`}
                         onClick={() => handleDateClick(date)}
                         data-testid={`button-date-${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`}
-                        style={hasWorkout ? {
-                          backgroundImage: "url(/images/icon/maehwa.jpg)",
-                          backgroundSize: "cover",
-                          backgroundPosition: "center",
-                        } : undefined}
                       >
                         <div
                           className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium shrink-0 ${

@@ -6,7 +6,7 @@ import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
 import { GripVertical, Check } from "lucide-react";
 import type { CalendarSettings, CalendarDisplayItem } from "@/lib/types";
-import { QUOTE_ICON_OPTIONS, getQuoteIconSrc } from "@/lib/types";
+import { QUOTE_ICON_OPTIONS } from "@/lib/types";
 
 const QUOTE_INTERVAL_OPTIONS = [
   { value: 30, label: "30초" },
@@ -166,7 +166,7 @@ export function CalendarSettingsModal({
           </div>
 
           <div className="border-t pt-4">
-            <h3 className="text-sm font-bold mb-3">명언 자동 노출 주기</h3>
+            <h3 className="text-sm font-bold mb-3">청명 잔소리 노출 주기</h3>
             <div className="flex flex-wrap gap-2">
               {QUOTE_INTERVAL_OPTIONS.map((opt) => (
                 <button
@@ -186,17 +186,7 @@ export function CalendarSettingsModal({
           </div>
 
           <div className="border-t pt-4">
-            <h3 className="text-sm font-bold mb-2">명언 아이콘</h3>
-            <div className="flex items-center gap-3 mb-3">
-              <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-primary shrink-0">
-                <img
-                  src={getQuoteIconSrc(settings.quoteIconId)}
-                  alt="현재 아이콘"
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              <span className="text-xs text-muted-foreground">현재 적용된 아이콘</span>
-            </div>
+            <h3 className="text-sm font-bold mb-3">청명 이미지</h3>
             <div className="grid grid-cols-5 gap-2">
               {QUOTE_ICON_OPTIONS.map((opt) => (
                 <button
@@ -204,8 +194,8 @@ export function CalendarSettingsModal({
                   onClick={() => onSettingsChange({ ...settings, quoteIconId: opt.id })}
                   className={`relative w-full aspect-square rounded-full overflow-hidden border-2 transition-all ${
                     settings.quoteIconId === opt.id
-                      ? "border-primary ring-2 ring-primary/30 scale-105"
-                      : "border-border hover:border-primary/50"
+                      ? "border-primary ring-2 ring-primary/40 scale-110 shadow-md shadow-primary/30"
+                      : "border-border hover:border-primary/50 opacity-70"
                   }`}
                   data-testid={`button-icon-${opt.id}`}
                 >
