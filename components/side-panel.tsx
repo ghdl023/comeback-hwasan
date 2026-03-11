@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/components/auth-provider";
-import { PlumBlossom } from "@/components/plum-blossom";
+
 import {
   Home,
   ListChecks,
@@ -66,8 +66,8 @@ export function SidePanel({ open, onClose }: SidePanelProps) {
       >
         <div className="flex items-center justify-between px-4 pt-4 pb-2">
           <div className="flex items-center gap-2">
-            <PlumBlossom className="h-5 w-5 text-pink-500" />
-            <span className="font-bold text-sm">화산귀환</span>
+            <img src="/images/icon/maehwa.jpg" alt="매화" className="h-5 w-5 rounded-full object-cover" />
+            <span className="font-bold text-sm">수련은 힘들어야 수련이다.</span>
           </div>
           <button
             onClick={onClose}

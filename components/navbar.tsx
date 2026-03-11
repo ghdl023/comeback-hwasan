@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/components/auth-provider";
 import { Button } from "@/components/ui/button";
-import { PlumBlossom } from "@/components/plum-blossom";
+
 import {
   LayoutDashboard,
   Dumbbell,
@@ -35,8 +35,8 @@ export function Navbar() {
               className="flex items-center gap-2 font-bold text-lg tracking-tight"
               data-testid="link-logo"
             >
-              <PlumBlossom className="h-5 w-5 text-pink-500" />
-              <span className="hidden sm:inline">화산귀환</span>
+              <img src="/images/icon/maehwa.jpg" alt="매화" className="h-5 w-5 rounded-full object-cover" />
+              <span className="hidden sm:inline text-sm">수련은 힘들어야 수련이다.</span>
             </Link>
 
             <div className="hidden md:flex items-center gap-1">

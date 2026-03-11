@@ -6,7 +6,6 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Loader2 } from "lucide-react";
-import { PlumBlossom } from "@/components/plum-blossom";
 
 export default function LoginPage() {
   const { user, loading, signInWithEmail } = useAuth();
@@ -56,14 +55,14 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center px-4">
       <div className="w-full max-w-xs text-center space-y-8">
         <div className="space-y-4">
-          <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-pink-100 dark:bg-pink-950/40 mx-auto">
-            <PlumBlossom className="w-16 h-16 text-pink-500 dark:text-pink-400" />
+          <div className="inline-flex items-center justify-center w-24 h-24 rounded-full overflow-hidden mx-auto">
+            <img src="/images/icon/maehwa.jpg" alt="매화" className="w-full h-full object-cover" />
           </div>
           <h1
-            className="text-3xl font-bold tracking-tight"
+            className="text-xl font-bold tracking-tight"
             data-testid="text-login-title"
           >
-            화산귀환
+            수련은 힘들어야 수련이다.
           </h1>
         </div>
 
