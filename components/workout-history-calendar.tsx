@@ -110,18 +110,13 @@ export function WorkoutHistoryCalendar({
                             isFuture
                               ? "bg-muted/30 text-muted-foreground/30 cursor-default"
                               : hasWorkout
-                                ? "text-white"
+                                ? "bg-pink-400/80 text-white"
                                 : "bg-muted/60 text-muted-foreground/60"
                           } ${
                             isToday
                               ? "ring-2 ring-red-500 ring-offset-1 ring-offset-background"
                               : ""
                           }`}
-                          style={hasWorkout && !isFuture ? {
-                            backgroundImage: "url(/images/icon/maehwa.jpg)",
-                            backgroundSize: "cover",
-                            backgroundPosition: "center",
-                          } : undefined}
                           data-testid={`history-day-${dateStr}`}
                         >
                           {day}
