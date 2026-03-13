@@ -150,6 +150,7 @@ export default function DashboardPage() {
   const swipeStartY = useRef<number | null>(null);
   const swipeDirection = useRef<"horizontal" | "vertical" | null>(null);
   const calendarWidthRef = useRef(0);
+  const swipeSkipTransition = useRef(false);
   const monthFetchVersion = useRef(0);
   const [exerciseSelectorOpen, setExerciseSelectorOpen] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<{ type: "exercise" | "memo"; id: string; label: string } | null>(null);
@@ -614,6 +615,7 @@ export default function DashboardPage() {
       setSwipeOffset(targetOffset);
       setSwipeAnimating(true);
       setTimeout(() => {
+        swipeSkipTransition.current = true;
         if (dx > 0) {
           setCurrentMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
         } else {
@@ -621,6 +623,11 @@ export default function DashboardPage() {
         }
         setSwipeOffset(0);
         setSwipeAnimating(false);
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            swipeSkipTransition.current = false;
+          });
+        });
       }, 280);
     } else {
       setSwipeOffset(0);
@@ -1719,7 +1726,7 @@ export default function DashboardPage() {
               style={{
                 width: "300%",
                 transform: `translateX(calc(-33.3333% + ${swipeOffset}px))`,
-                transition: swipeAnimating || swipeOffset === 0 ? "transform 0.28s cubic-bezier(0.25,0.46,0.45,0.94)" : "none",
+                transition: swipeSkipTransition.current ? "none" : (swipeAnimating || swipeOffset === 0 ? "transform 0.28s cubic-bezier(0.25,0.46,0.45,0.94)" : "none"),
               }}
             >
               <div className="flex flex-col" style={{ width: "33.3333%" }}>
