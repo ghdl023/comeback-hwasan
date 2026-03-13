@@ -3,7 +3,7 @@ import "./globals.css";
 import { ClientProviders } from "@/components/client-providers";
 
 export const metadata: Metadata = {
-  title: "화산귀환 - comback-hwasan",
+  title: "화산귀환",
   description: "화산귀환 운동 기록 트래커",
 };
 
