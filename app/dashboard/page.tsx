@@ -134,6 +134,7 @@ export default function DashboardPage() {
     [],
   );
   const [exerciseSelectorOpen, setExerciseSelectorOpen] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ type: "exercise" | "memo"; id: string; label: string } | null>(null);
   const [expandedExercises, setExpandedExercises] = useState<Set<string>>(
     new Set(),
   );
@@ -381,31 +382,44 @@ export default function DashboardPage() {
     });
   };
 
-  const handleDeleteExercise = async (exerciseId: string) => {
-    if (!user) return;
-    const wIds = dayWorkouts.map((w) => w.id);
-    if (timerTarget?.exerciseId === exerciseId && wIds.includes(timerTarget?.workoutId)) {
-      clearTimer();
-    }
-    try {
-      await deleteExerciseSetsFromWorkouts(wIds, exerciseId);
-      setSets((prev) =>
-        prev.filter(
-          (s) => !(s.exercise_id === exerciseId && wIds.includes(s.workout_id)),
-        ),
-      );
-    } catch (err) {
-      console.error("Delete exercise sets error:", err);
-    }
+  const requestDeleteExercise = (exerciseId: string) => {
+    const ex = exerciseMap.get(exerciseId);
+    setDeleteConfirm({ type: "exercise", id: exerciseId, label: ex?.name || "운동" });
   };
 
-  const handleDeleteMemo = async (memoId: string) => {
-    try {
-      await deleteMemo(memoId);
-      setMemos((prev) => prev.filter((m) => m.id !== memoId));
-      setMonthlyMemos((prev) => prev.filter((m) => m.id !== memoId));
-    } catch (err) {
-      console.error("Memo delete error:", err);
+  const requestDeleteMemo = (memoId: string) => {
+    const memo = memos.find((m) => m.id === memoId);
+    const preview = memo?.content?.slice(0, 20) || "메모";
+    setDeleteConfirm({ type: "memo", id: memoId, label: preview });
+  };
+
+  const executeDelete = async () => {
+    if (!deleteConfirm || !user) return;
+    const { type, id } = deleteConfirm;
+    setDeleteConfirm(null);
+    if (type === "exercise") {
+      const wIds = dayWorkouts.map((w) => w.id);
+      if (timerTarget?.exerciseId === id && wIds.includes(timerTarget?.workoutId)) {
+        clearTimer();
+      }
+      try {
+        await deleteExerciseSetsFromWorkouts(wIds, id);
+        setSets((prev) =>
+          prev.filter(
+            (s) => !(s.exercise_id === id && wIds.includes(s.workout_id)),
+          ),
+        );
+      } catch (err) {
+        console.error("Delete exercise sets error:", err);
+      }
+    } else if (type === "memo") {
+      try {
+        await deleteMemo(id);
+        setMemos((prev) => prev.filter((m) => m.id !== id));
+        setMonthlyMemos((prev) => prev.filter((m) => m.id !== id));
+      } catch (err) {
+        console.error("Memo delete error:", err);
+      }
     }
   };
 
@@ -1142,7 +1156,7 @@ export default function DashboardPage() {
             expandedExercises={expandedExercises}
             onEditExercise={(id) => setSetEditExerciseId(id)}
             onToggleExpand={handleToggleExerciseExpand}
-            onDeleteExercise={handleDeleteExercise}
+            onDeleteExercise={requestDeleteExercise}
             onReorder={handleExerciseReorder}
           />
         )}
@@ -1284,7 +1298,7 @@ export default function DashboardPage() {
                     className="h-6 px-2 text-[10px] text-destructive hover:text-destructive"
                     onClick={(e) => {
                       e.stopPropagation();
-                      handleDeleteMemo(m.id);
+                      requestDeleteMemo(m.id);
                     }}
                     data-testid={`button-delete-memo-${m.id}`}
                   >
@@ -1587,6 +1601,30 @@ export default function DashboardPage() {
         settings={calendarSettings}
         onSettingsChange={handleSettingsChange}
       />
+      {deleteConfirm && (
+        <div className="fixed inset-0 z-[80] bg-black/50 flex items-center justify-center" onClick={() => setDeleteConfirm(null)}>
+          <div
+            className="bg-background rounded-xl p-5 mx-6 max-w-sm w-full shadow-lg"
+            onClick={(e) => e.stopPropagation()}
+            data-testid="confirm-delete-dialog"
+          >
+            <p className="text-sm font-medium text-center mb-1">
+              {deleteConfirm.type === "exercise" ? "운동 삭제" : "메모 삭제"}
+            </p>
+            <p className="text-xs text-muted-foreground text-center mb-4 break-keep">
+              &lsquo;{deleteConfirm.label}&rsquo;{deleteConfirm.label.length > 20 ? "..." : ""}{deleteConfirm.type === "exercise" ? "의 모든 세트가" : "가"} 삭제됩니다.<br />삭제하시겠습니까?
+            </p>
+            <div className="flex items-center gap-2">
+              <Button variant="outline" className="flex-1 h-10 text-sm" onClick={() => setDeleteConfirm(null)} data-testid="button-delete-cancel">
+                취소
+              </Button>
+              <Button variant="destructive" className="flex-1 h-10 text-sm" onClick={executeDelete} data-testid="button-delete-confirm">
+                삭제
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </AppShell>
   );
 }
