@@ -358,6 +358,20 @@ export default function DashboardPage() {
     }, 500);
   }, []);
 
+  const getRecentSetsForExercise = useCallback((exerciseId: string): Pick<WorkoutSet, "reps" | "weight" | "rest_seconds">[] => {
+    const workoutDateMap = new Map(workouts.map((w) => [w.id, w.performed_at]));
+    const exerciseSets = sets.filter((s) => s.exercise_id === exerciseId);
+    if (exerciseSets.length === 0) return [];
+    const withDate = exerciseSets.map((s) => ({ ...s, date: workoutDateMap.get(s.workout_id) || "" }));
+    withDate.sort((a, b) => b.date.localeCompare(a.date));
+    const latestDate = withDate[0].date;
+    const latestWorkoutId = withDate[0].workout_id;
+    const recentSets = withDate
+      .filter((s) => s.date === latestDate && s.workout_id === latestWorkoutId)
+      .sort((a, b) => a.set_number - b.set_number);
+    return recentSets.map((s) => ({ reps: s.reps, weight: s.weight, rest_seconds: s.rest_seconds }));
+  }, [workouts, sets]);
+
   const handleExercisesSelected = async (selectedExercises: Exercise[]) => {
     if (!user || selectedExercises.length === 0) return;
     try {
@@ -368,15 +382,33 @@ export default function DashboardPage() {
         duration_minutes: null,
         notes: null,
       });
-      const setsToCreate = selectedExercises.map((ex, idx) => ({
-        workout_id: workout.id,
-        exercise_id: ex.id,
-        set_number: idx + 1,
-        reps: 15,
-        weight: 10,
-        rest_seconds: 130,
-        completed: false,
-      }));
+      const setsToCreate: Omit<WorkoutSet, "id" | "created_at">[] = [];
+      selectedExercises.forEach((ex) => {
+        const recentSets = getRecentSetsForExercise(ex.id);
+        if (recentSets.length > 0) {
+          recentSets.forEach((rs, idx) => {
+            setsToCreate.push({
+              workout_id: workout.id,
+              exercise_id: ex.id,
+              set_number: idx + 1,
+              reps: rs.reps,
+              weight: rs.weight,
+              rest_seconds: rs.rest_seconds,
+              completed: false,
+            });
+          });
+        } else {
+          setsToCreate.push({
+            workout_id: workout.id,
+            exercise_id: ex.id,
+            set_number: 1,
+            reps: 15,
+            weight: 10,
+            rest_seconds: 130,
+            completed: false,
+          });
+        }
+      });
       await addWorkoutSets(setsToCreate);
       const [w, s, e] = await Promise.all([
         getWorkouts(user.uid),
