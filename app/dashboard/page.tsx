@@ -129,6 +129,8 @@ export default function DashboardPage() {
   const [memoShowOnCalendar, setMemoShowOnCalendar] = useState(false);
   const [memoSaving, setMemoSaving] = useState(false);
   const [editingMemo, setEditingMemo] = useState<Memo | null>(null);
+  const [isNewMemo, setIsNewMemo] = useState(false);
+  const memoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [monthlyMemos, setMonthlyMemos] = useState<Memo[]>([]);
   const [monthlyBodyRecords, setMonthlyBodyRecords] = useState<BodyRecord[]>(
     [],
@@ -313,32 +315,38 @@ export default function DashboardPage() {
     }
   };
 
-  const handleAddMemo = async () => {
-    if (!user || !memoContent.trim()) return;
+  const handleOpenMemoAdd = async () => {
+    if (!user) return;
     setMemoSaving(true);
     try {
       const newMemo = await addMemo({
         user_id: user.uid,
         date: selectedDateStr,
-        content: memoContent.trim(),
-        show_on_calendar: memoShowOnCalendar,
+        content: "",
+        show_on_calendar: false,
       });
-      setMemos((prev) => [newMemo, ...prev]);
-      if (newMemo.show_on_calendar) {
-        const prefix = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, "0")}`;
-        if (newMemo.date.startsWith(prefix)) {
-          setMonthlyMemos((prev) => [newMemo, ...prev]);
-        }
-      }
+      setEditingMemo(newMemo);
       setMemoContent("");
       setMemoShowOnCalendar(false);
-      setMemoAddOpen(false);
+      setIsNewMemo(true);
+      setMemoAddOpen(true);
     } catch (err) {
-      console.error("Memo save error:", err);
+      console.error("Memo create error:", err);
     } finally {
       setMemoSaving(false);
     }
   };
+
+  const debouncedMemoSave = useCallback((memo: Memo, content: string, showOnCalendar: boolean) => {
+    if (memoSaveTimerRef.current) clearTimeout(memoSaveTimerRef.current);
+    memoSaveTimerRef.current = setTimeout(async () => {
+      try {
+        await updateMemo(memo.id, { content, show_on_calendar: showOnCalendar });
+      } catch (err) {
+        console.error("Memo auto-save error:", err);
+      }
+    }, 500);
+  }, []);
 
   const handleExercisesSelected = async (selectedExercises: Exercise[]) => {
     if (!user || selectedExercises.length === 0) return;
@@ -427,6 +435,7 @@ export default function DashboardPage() {
     setEditingMemo(memo);
     setMemoContent(memo.content);
     setMemoShowOnCalendar(memo.show_on_calendar);
+    setIsNewMemo(false);
   };
 
   const handleUpdateMemo = async () => {
@@ -911,12 +920,45 @@ export default function DashboardPage() {
   }
 
   if (memoAddOpen || editingMemo) {
-    const isEditing = !!editingMemo;
-    const handleClose = () => {
+    const isAdding = isNewMemo;
+    const handleClose = async () => {
+      if (memoSaveTimerRef.current) {
+        clearTimeout(memoSaveTimerRef.current);
+        memoSaveTimerRef.current = null;
+      }
+      if (editingMemo) {
+        const trimmed = memoContent.trim();
+        if (!trimmed) {
+          await deleteMemo(editingMemo.id).catch(console.error);
+          setMemos((prev) => prev.filter((m) => m.id !== editingMemo.id));
+          setMonthlyMemos((prev) => prev.filter((m) => m.id !== editingMemo.id));
+        } else {
+          await updateMemo(editingMemo.id, { content: trimmed, show_on_calendar: memoShowOnCalendar }).catch(console.error);
+          const updated = { ...editingMemo, content: trimmed, show_on_calendar: memoShowOnCalendar };
+          setMemos((prev) => {
+            const exists = prev.some((m) => m.id === editingMemo.id);
+            if (exists) return prev.map((m) => m.id === editingMemo.id ? updated : m);
+            return [updated, ...prev];
+          });
+          const prefix = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, "0")}`;
+          if (editingMemo.date.startsWith(prefix)) {
+            if (memoShowOnCalendar) {
+              setMonthlyMemos((prev) => {
+                const exists = prev.some((m) => m.id === editingMemo.id);
+                if (exists) return prev.map((m) => m.id === editingMemo.id ? updated : m);
+                return [updated, ...prev];
+              });
+            } else {
+              setMonthlyMemos((prev) => prev.filter((m) => m.id !== editingMemo.id));
+            }
+          }
+        }
+      }
       setMemoAddOpen(false);
       setEditingMemo(null);
       setMemoContent("");
       setMemoShowOnCalendar(false);
+      setIsNewMemo(false);
     };
     return (
       <div className="flex flex-col h-[100dvh] bg-background">
@@ -931,7 +973,7 @@ export default function DashboardPage() {
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <h1 className="text-base font-bold">
-            {isEditing ? "메모 수정" : "메모 추가"}
+            {isAdding ? "메모 추가" : "메모 수정"}
           </h1>
         </div>
 
@@ -939,7 +981,11 @@ export default function DashboardPage() {
           <Textarea
             placeholder="메모를 입력하세요..."
             value={memoContent}
-            onChange={(e) => setMemoContent(e.target.value)}
+            onChange={(e) => {
+              const val = e.target.value;
+              setMemoContent(val);
+              if (editingMemo) debouncedMemoSave(editingMemo, val, memoShowOnCalendar);
+            }}
             className="flex-1 resize-none text-sm scrollbar-hide"
             style={{ maxHeight: "70vh" }}
             data-testid="textarea-memo"
@@ -957,7 +1003,11 @@ export default function DashboardPage() {
                   ? "bg-primary border-primary"
                   : "border-muted-foreground/40"
               }`}
-              onClick={() => setMemoShowOnCalendar(!memoShowOnCalendar)}
+              onClick={() => {
+                const next = !memoShowOnCalendar;
+                setMemoShowOnCalendar(next);
+                if (editingMemo) debouncedMemoSave(editingMemo, memoContent, next);
+              }}
             >
               {memoShowOnCalendar && (
                 <Check className="h-3 w-3 text-primary-foreground" />
@@ -972,15 +1022,15 @@ export default function DashboardPage() {
             size="sm"
             className="h-9 px-5"
             disabled={!memoContent.trim() || memoSaving}
-            onClick={isEditing ? handleUpdateMemo : handleAddMemo}
+            onClick={handleClose}
             data-testid="button-memo-submit"
           >
             {memoSaving ? (
               <Loader2 className="h-4 w-4 animate-spin" />
-            ) : isEditing ? (
-              "수정"
-            ) : (
+            ) : isAdding ? (
               "추가"
+            ) : (
+              "수정"
             )}
           </Button>
         </div>
@@ -1254,7 +1304,7 @@ export default function DashboardPage() {
             size="sm"
             variant="outline"
             className="h-8 px-4 text-xs gap-1.5"
-            onClick={() => setMemoAddOpen(true)}
+            onClick={handleOpenMemoAdd}
             data-testid="button-open-memo-add"
           >
             <Plus className="h-3.5 w-3.5" /> 추가
