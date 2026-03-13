@@ -95,14 +95,23 @@ interface DayInfo {
   memoText: string | null;
 }
 
+let _dashCache: {
+  uid: string;
+  workouts: Workout[];
+  sets: WorkoutSet[];
+  exercises: Exercise[];
+  calendarSettings: CalendarSettings;
+} | null = null;
+
 export default function DashboardPage() {
   const { user } = useAuth();
   const router = useRouter();
   const { timerState, timerTarget, clearTimer } = useRestTimer();
-  const [workouts, setWorkouts] = useState<Workout[]>([]);
-  const [sets, setSets] = useState<WorkoutSet[]>([]);
-  const [exercises, setExercises] = useState<Exercise[]>([]);
-  const [loading, setLoading] = useState(true);
+  const hasCached = user && _dashCache?.uid === user.uid;
+  const [workouts, setWorkouts] = useState<Workout[]>(hasCached ? _dashCache!.workouts : []);
+  const [sets, setSets] = useState<WorkoutSet[]>(hasCached ? _dashCache!.sets : []);
+  const [exercises, setExercises] = useState<Exercise[]>(hasCached ? _dashCache!.exercises : []);
+  const [loading, setLoading] = useState(!hasCached);
   const today = useMemo(() => new Date(), []);
   const [selectedDate, setSelectedDate] = useState<Date>(today);
   const [currentMonth, setCurrentMonth] = useState(() => {
@@ -145,7 +154,7 @@ export default function DashboardPage() {
   );
   const [historyCalendarOpen, setHistoryCalendarOpen] = useState(false);
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
-  const [calendarSettings, setCalendarSettings] = useState<CalendarSettings>({ ...DEFAULT_CALENDAR_SETTINGS });
+  const [calendarSettings, setCalendarSettings] = useState<CalendarSettings>(hasCached ? _dashCache!.calendarSettings : { ...DEFAULT_CALENDAR_SETTINGS });
   const exerciseSelectorBackRef = useRef<(() => boolean) | null>(null);
 
   const prevDetailRef = useRef(false);
@@ -230,6 +239,7 @@ export default function DashboardPage() {
         setSets(s);
         setExercises(e);
         setCalendarSettings(cs);
+        _dashCache = { uid: user.uid, workouts: w, sets: s, exercises: e, calendarSettings: cs };
       } catch (err) {
         console.error("Dashboard fetch error:", err);
       } finally {
