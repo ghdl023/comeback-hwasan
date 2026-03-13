@@ -31,12 +31,16 @@ function serializeDoc<T>(id: string, data: DocumentData): T {
   return serialized as T;
 }
 
+function normalizeAppUser(user: AppUser): AppUser {
+  if (!user.role) user.role = "user";
+  if (typeof user.is_active !== "boolean") user.is_active = true;
+  return user;
+}
+
 export async function getUser(uid: string): Promise<AppUser | null> {
   const snap = await getDoc(doc(db, "users", uid));
   if (!snap.exists()) return null;
-  const user = serializeDoc<AppUser>(snap.id, snap.data());
-  if (!user.role) user.role = "user";
-  return user;
+  return normalizeAppUser(serializeDoc<AppUser>(snap.id, snap.data()));
 }
 
 export async function getUserByEmail(email: string): Promise<AppUser | null> {
@@ -47,9 +51,18 @@ export async function getUserByEmail(email: string): Promise<AppUser | null> {
   );
   const snap = await getDocs(q);
   if (snap.empty) return null;
-  const user = serializeDoc<AppUser>(snap.docs[0].id, snap.docs[0].data());
-  if (!user.role) user.role = "user";
-  return user;
+  return normalizeAppUser(serializeDoc<AppUser>(snap.docs[0].id, snap.docs[0].data()));
+}
+
+export async function getAllUsers(): Promise<AppUser[]> {
+  const q = query(collection(db, "users"), orderBy("created_at", "desc"));
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => normalizeAppUser(serializeDoc<AppUser>(d.id, d.data())));
+}
+
+export async function updateUserActive(uid: string, is_active: boolean): Promise<void> {
+  const ref = doc(db, "users", uid);
+  await updateDoc(ref, { is_active });
 }
 
 export async function upsertUserOnLogin(userData: {
@@ -74,6 +87,7 @@ export async function upsertUserOnLogin(userData: {
     display_name: userData.displayName || null,
     photo_url: userData.photoURL || null,
     role: "user" as const,
+    is_active: true,
     created_at: now,
     last_login_at: now,
   };

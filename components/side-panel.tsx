@@ -13,6 +13,7 @@ import {
   StickyNote,
   Lightbulb,
   Bug,
+  Users,
 } from "lucide-react";
 
 const baseMenuItems = [
@@ -24,6 +25,7 @@ const baseMenuItems = [
 
 const adminMenuItems = [
   { href: "/exercises", label: "운동 목록", icon: ListChecks },
+  { href: "/users", label: "사용자 관리", icon: Users },
 ];
 
 interface SidePanelProps {

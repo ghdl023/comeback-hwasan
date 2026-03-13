@@ -27,6 +27,7 @@ export interface AppUser {
   display_name: string | null;
   photo_url: string | null;
   role: UserRole;
+  is_active: boolean;
   created_at: string;
   last_login_at: string;
 }

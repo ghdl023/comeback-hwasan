@@ -99,7 +99,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const savedUid = getSavedAuth();
     if (savedUid) {
       getUser(savedUid).then((u) => {
-        if (u) {
+        if (u && u.is_active !== false) {
           const mockUser = {
             uid: u.uid,
             email: u.email,
@@ -161,6 +161,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const foundUser = await getUserByEmail(email.trim().toLowerCase());
     if (!foundUser) {
       throw new Error("등록되지 않은 이메일입니다.");
+    }
+    if (foundUser.is_active === false) {
+      throw new Error("비활성화된 계정입니다. 관리자에게 문의하세요.");
     }
     const mockUser = {
       uid: foundUser.uid,

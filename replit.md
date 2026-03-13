@@ -46,8 +46,9 @@ middleware.ts           - Next.js middleware (passthrough — auth is client-sid
 ```
 
 ## Firestore Collections
-- `users` - User profiles (uid, email, display_name, photo_url, role, created_at, last_login_at)
-  - `role`: `"user"` (default) or `"super_admin"`; super_admin can access /exercises (운동 목록) page
+- `users` - User profiles (uid, email, display_name, photo_url, role, is_active, created_at, last_login_at)
+  - `role`: `"user"` (default) or `"super_admin"`; super_admin can access /exercises, /users pages
+  - `is_active`: boolean (default true); inactive users are blocked from login and auto-login
 - `exercises` - Exercise library (user_id, name, category, muscle_group, parent_id, created_at)
   - Supports hierarchical 3-depth structure: 대분류(muscle_group) → 중분류(parent, parent_id=null) → 상세운동(child, parent_id=parentDoc.id)
   - `user_id: "system"` for system-wide exercises visible to all users
@@ -97,6 +98,8 @@ middleware.ts           - Next.js middleware (passthrough — auth is client-sid
 - Safe area insets handled for iOS notch devices
 - Rest timer: global context (`RestTimerProvider` in `rest-timer-context.tsx`) persists timer across views; `FloatingTimer` shows circular progress button when away from set editor; clicking navigates back to the exercise
 - Floating quote (청명): `FloatingQuote` component in `client-providers.tsx` shows `public/images/청명.png` as floating button on all screens; clicking shows random quote from `public/data/quotes.json` in animated modal; auto-dismisses after 5s or on close
+- User management: super admin can view all users and toggle active/inactive status via `/users` page; inactive users blocked at login and auto-login
+- Calendar swipe: 3-panel carousel (prev/current/next month) with smooth touch swipe; adjacent months pre-fetched for seamless transitions with race condition protection
 - Calendar cells: show muscle group tags (color-coded), 신체 indicator, memo preview text for each day with data; display order and font size configurable via settings modal
 - Calendar settings modal (⚙ button): font size slider (6-10px), display order drag-and-drop (운동/신체/메모), workout duration toggle; persisted per user in Firestore `user_settings` collection; changes apply immediately, debounced save (500ms)
 - Monthly data (memos, body records) fetched via single-field Firestore queries (user_id only) + client-side date prefix filtering to avoid composite index requirement

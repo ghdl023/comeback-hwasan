@@ -120,8 +120,6 @@ export default function DashboardPage() {
   const [monthPickerOpen, setMonthPickerOpen] = useState(false);
   const monthPickerRef = useRef<HTMLDivElement>(null);
   const calendarRef = useRef<HTMLDivElement>(null);
-  const touchStartX = useRef<number | null>(null);
-  const touchStartY = useRef<number | null>(null);
 
   const [detailOpen, setDetailOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<DetailTab>("exercises");
@@ -144,6 +142,15 @@ export default function DashboardPage() {
   const [monthlyBodyRecords, setMonthlyBodyRecords] = useState<BodyRecord[]>(
     [],
   );
+  const [adjacentMemos, setAdjacentMemos] = useState<{ prev: Memo[]; next: Memo[] }>({ prev: [], next: [] });
+  const [adjacentBodyRecords, setAdjacentBodyRecords] = useState<{ prev: BodyRecord[]; next: BodyRecord[] }>({ prev: [], next: [] });
+  const [swipeOffset, setSwipeOffset] = useState(0);
+  const [swipeAnimating, setSwipeAnimating] = useState(false);
+  const swipeStartX = useRef<number | null>(null);
+  const swipeStartY = useRef<number | null>(null);
+  const swipeDirection = useRef<"horizontal" | "vertical" | null>(null);
+  const calendarWidthRef = useRef(0);
+  const monthFetchVersion = useRef(0);
   const [exerciseSelectorOpen, setExerciseSelectorOpen] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<{ type: "exercise" | "memo"; id: string; label: string } | null>(null);
   const [expandedExercises, setExpandedExercises] = useState<Set<string>>(
@@ -286,15 +293,25 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (!user) return;
+    const version = ++monthFetchVersion.current;
     const y = currentMonth.getFullYear();
     const m = currentMonth.getMonth();
+    const prevDate = new Date(y, m - 1, 1);
+    const nextDate = new Date(y, m + 1, 1);
     Promise.all([
       getMemosByUserMonth(user.uid, y, m),
       getBodyRecordsByMonth(user.uid, y, m),
+      getMemosByUserMonth(user.uid, prevDate.getFullYear(), prevDate.getMonth()),
+      getBodyRecordsByMonth(user.uid, prevDate.getFullYear(), prevDate.getMonth()),
+      getMemosByUserMonth(user.uid, nextDate.getFullYear(), nextDate.getMonth()),
+      getBodyRecordsByMonth(user.uid, nextDate.getFullYear(), nextDate.getMonth()),
     ])
-      .then(([memos, bodies]) => {
+      .then(([memos, bodies, prevMemos, prevBodies, nextMemos, nextBodies]) => {
+        if (monthFetchVersion.current !== version) return;
         setMonthlyMemos(memos);
         setMonthlyBodyRecords(bodies);
+        setAdjacentMemos({ prev: prevMemos, next: nextMemos });
+        setAdjacentBodyRecords({ prev: prevBodies, next: nextBodies });
       })
       .catch(console.error);
   }, [user, currentMonth]);
@@ -555,28 +572,62 @@ export default function DashboardPage() {
     return () => document.removeEventListener("mousedown", handleClick);
   }, [monthPickerOpen]);
 
-  const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    touchStartX.current = e.touches[0].clientX;
-    touchStartY.current = e.touches[0].clientY;
-  }, []);
-
-  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
-    if (touchStartX.current === null || touchStartY.current === null) return;
-    const deltaX = e.changedTouches[0].clientX - touchStartX.current;
-    const deltaY = e.changedTouches[0].clientY - touchStartY.current;
-    touchStartX.current = null;
-    touchStartY.current = null;
-    if (Math.abs(deltaX) < 50 || Math.abs(deltaX) < Math.abs(deltaY)) return;
-    if (deltaX > 0) {
-      setCurrentMonth(
-        (prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1),
-      );
-    } else {
-      setCurrentMonth(
-        (prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1),
-      );
+  const handleSwipeTouchStart = useCallback((e: React.TouchEvent) => {
+    if (swipeAnimating) return;
+    swipeStartX.current = e.touches[0].clientX;
+    swipeStartY.current = e.touches[0].clientY;
+    swipeDirection.current = null;
+    if (calendarRef.current) {
+      calendarWidthRef.current = calendarRef.current.offsetWidth;
     }
-  }, []);
+  }, [swipeAnimating]);
+
+  const handleSwipeTouchMove = useCallback((e: React.TouchEvent) => {
+    if (swipeStartX.current === null || swipeStartY.current === null || swipeAnimating) return;
+    const dx = e.touches[0].clientX - swipeStartX.current;
+    const dy = e.touches[0].clientY - swipeStartY.current;
+    if (!swipeDirection.current) {
+      if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+      swipeDirection.current = Math.abs(dx) > Math.abs(dy) ? "horizontal" : "vertical";
+    }
+    if (swipeDirection.current === "horizontal") {
+      e.preventDefault();
+      setSwipeOffset(dx);
+    }
+  }, [swipeAnimating]);
+
+  const handleSwipeTouchEnd = useCallback((e: React.TouchEvent) => {
+    if (swipeStartX.current === null || swipeAnimating) return;
+    const dx = e.changedTouches[0].clientX - swipeStartX.current;
+    swipeStartX.current = null;
+    swipeStartY.current = null;
+    if (swipeDirection.current !== "horizontal") {
+      swipeDirection.current = null;
+      setSwipeOffset(0);
+      return;
+    }
+    swipeDirection.current = null;
+    const w = calendarWidthRef.current || 300;
+    const threshold = w * 0.25;
+    if (Math.abs(dx) > threshold) {
+      const targetOffset = dx > 0 ? w : -w;
+      setSwipeOffset(targetOffset);
+      setSwipeAnimating(true);
+      setTimeout(() => {
+        if (dx > 0) {
+          setCurrentMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
+        } else {
+          setCurrentMonth((prev) => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
+        }
+        setSwipeOffset(0);
+        setSwipeAnimating(false);
+      }, 280);
+    } else {
+      setSwipeOffset(0);
+      setSwipeAnimating(true);
+      setTimeout(() => setSwipeAnimating(false), 280);
+    }
+  }, [swipeAnimating]);
 
   const setsByWorkoutId = useMemo(() => {
     const map = new Map<string, WorkoutSet[]>();
@@ -648,14 +699,17 @@ export default function DashboardPage() {
       return map.get(key)!;
     };
 
-    monthlyBodyRecords.forEach((b) => {
+    const allBodyRecords = [...monthlyBodyRecords, ...adjacentBodyRecords.prev, ...adjacentBodyRecords.next];
+    const allMemos = [...monthlyMemos, ...adjacentMemos.prev, ...adjacentMemos.next];
+
+    allBodyRecords.forEach((b) => {
       const info = addNonWorkoutInfo(b.date);
       info.bodyWeight = b.weight;
       info.bodySkeletalMuscle = b.skeletal_muscle;
       info.bodyFat = b.body_fat;
     });
 
-    monthlyMemos.forEach((m) => {
+    allMemos.forEach((m) => {
       const info = addNonWorkoutInfo(m.date);
       if (!info.memoText) info.memoText = m.content;
     });
@@ -667,6 +721,8 @@ export default function DashboardPage() {
     exerciseMap,
     monthlyMemos,
     monthlyBodyRecords,
+    adjacentMemos,
+    adjacentBodyRecords,
   ]);
 
   const getDayInfo = (date: Date): DayInfo | null => {
@@ -677,9 +733,9 @@ export default function DashboardPage() {
   const year = currentMonth.getFullYear();
   const month = currentMonth.getMonth();
 
-  const weeks = useMemo(() => {
-    const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
+  const computeWeeks = useCallback((y: number, m: number): WeekRow[] => {
+    const firstDay = new Date(y, m, 1);
+    const lastDay = new Date(y, m + 1, 0);
     const startDow = firstDay.getDay();
     const daysInMonth = lastDay.getDate();
     const getWeekNumber = (d: Date) => {
@@ -692,7 +748,7 @@ export default function DashboardPage() {
     };
     const totalCells = startDow + daysInMonth;
     const rowCount = totalCells <= 35 ? 5 : 6;
-    const calendarStart = new Date(year, month, 1 - startDow);
+    const calendarStart = new Date(y, m, 1 - startDow);
     const rows: WeekRow[] = [];
     for (let w = 0; w < rowCount; w++) {
       const days: DayCell[] = [];
@@ -705,13 +761,26 @@ export default function DashboardPage() {
         days.push({
           date,
           isCurrentMonth:
-            date.getMonth() === month && date.getFullYear() === year,
+            date.getMonth() === m && date.getFullYear() === y,
         });
       }
       rows.push({ weekNumber: getWeekNumber(days[0].date), days });
     }
     return rows;
-  }, [year, month]);
+  }, []);
+
+  const weeks = useMemo(() => computeWeeks(year, month), [year, month, computeWeeks]);
+
+  const prevMonthDate = useMemo(() => new Date(year, month - 1, 1), [year, month]);
+  const nextMonthDate = useMemo(() => new Date(year, month + 1, 1), [year, month]);
+  const prevWeeks = useMemo(
+    () => computeWeeks(prevMonthDate.getFullYear(), prevMonthDate.getMonth()),
+    [prevMonthDate, computeWeeks],
+  );
+  const nextWeeks = useMemo(
+    () => computeWeeks(nextMonthDate.getFullYear(), nextMonthDate.getMonth()),
+    [nextMonthDate, computeWeeks],
+  );
 
   const getWeekStats = (week: WeekRow) => {
     let duration = 0,
@@ -800,6 +869,151 @@ export default function DashboardPage() {
     }
     return `${mins}분`;
   };
+
+  const renderCalendarGrid = useCallback((gridWeeks: WeekRow[], gridYear: number, gridMonth: number, isMainPanel: boolean) => {
+    const gridGetRowFlex = (wIdx: number) => {
+      if (!isMainPanel) return 1;
+      return getRowFlex(wIdx);
+    };
+    return (
+      <div className="flex-1 flex flex-col">
+        {gridWeeks.map((week, wIdx) => {
+          const stats = getWeekStats(week);
+          return (
+            <div
+              key={wIdx}
+              className="grid grid-cols-[2.2rem_repeat(7,1fr)] border-b border-border/30"
+              style={{
+                flex: gridGetRowFlex(wIdx),
+                minHeight: 0,
+                transition: isMainPanel ? "flex 0.3s ease" : "none",
+              }}
+            >
+              <div className="flex flex-col items-center justify-start pt-1.5 text-center border-r border-border/20">
+                <span className="text-[9px] font-semibold text-muted-foreground/80 leading-tight">
+                  {week.weekNumber}주
+                </span>
+                {calendarSettings.showDuration && stats.duration > 0 && (
+                  <span className="text-[8px] text-muted-foreground/60 leading-tight mt-0.5">
+                    {formatDuration(stats.duration)}
+                  </span>
+                )}
+                {stats.setCount > 0 && (
+                  <span className="text-[8px] text-muted-foreground/60 leading-tight">
+                    {stats.setCount}s
+                  </span>
+                )}
+              </div>
+              {week.days.map((cell, dIdx) => {
+                const { date, isCurrentMonth } = cell;
+                const info = getDayInfo(date);
+                const todayDate = isTodayDate(date);
+                const sel = isMainPanel && isSelected(date);
+                const isSunday = date.getDay() === 0;
+                const isSaturday = date.getDay() === 6;
+                return (
+                  <button
+                    key={`${wIdx}-${dIdx}`}
+                    className={`p-0.5 flex flex-col items-center transition-colors overflow-hidden ${sel ? "bg-primary/5" : ""} ${!isCurrentMonth ? "opacity-40" : ""}`}
+                    onClick={() => isMainPanel && handleDateClick(date)}
+                    data-testid={isMainPanel ? `button-date-${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}` : undefined}
+                  >
+                    <div
+                      className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium shrink-0 ${
+                        todayDate
+                          ? "bg-primary text-primary-foreground"
+                          : sel
+                            ? "bg-primary/20 text-primary"
+                            : isSunday
+                              ? "text-red-400"
+                              : isSaturday
+                                ? "text-blue-400"
+                                : "text-foreground"
+                      }`}
+                    >
+                      {date.getDate()}
+                    </div>
+                    {info && isCurrentMonth && (
+                      <div className="w-full mt-0.5 space-y-px overflow-hidden">
+                        {calendarSettings.showDuration && info.duration > 0 && (
+                          <div className="bg-sky-50 dark:bg-sky-900/20 rounded-sm px-0.5 py-px">
+                            <p style={{ fontSize: `${calendarSettings.fontSize}px` }} className="text-sky-600 dark:text-sky-400 font-medium truncate text-left leading-tight">
+                              {formatDuration(info.duration)}
+                            </p>
+                          </div>
+                        )}
+                        {calendarSettings.displayOrder.map((section) => {
+                          if (section === "body") {
+                            const showW = calendarSettings.showBodyWeight && info.bodyWeight != null;
+                            const showS = calendarSettings.showBodySkeletalMuscle && info.bodySkeletalMuscle != null;
+                            const showF = calendarSettings.showBodyFat && info.bodyFat != null;
+                            if (!showW && !showS && !showF) return null;
+                            return (
+                              <div key="body" className="space-y-px">
+                                {showW && (
+                                  <div className="bg-emerald-100 dark:bg-emerald-900/30 rounded-sm px-0.5 py-px">
+                                    <p style={{ fontSize: `${calendarSettings.fontSize}px` }} className="text-emerald-700 dark:text-emerald-300 font-medium truncate text-left leading-tight">
+                                      체중 {info.bodyWeight}kg
+                                    </p>
+                                  </div>
+                                )}
+                                {showS && (
+                                  <div className="bg-emerald-100 dark:bg-emerald-900/30 rounded-sm px-0.5 py-px">
+                                    <p style={{ fontSize: `${calendarSettings.fontSize}px` }} className="text-emerald-700 dark:text-emerald-300 font-medium truncate text-left leading-tight">
+                                      골격근 {info.bodySkeletalMuscle}kg
+                                    </p>
+                                  </div>
+                                )}
+                                {showF && (
+                                  <div className="bg-emerald-100 dark:bg-emerald-900/30 rounded-sm px-0.5 py-px">
+                                    <p style={{ fontSize: `${calendarSettings.fontSize}px` }} className="text-emerald-700 dark:text-emerald-300 font-medium truncate text-left leading-tight">
+                                      체지방 {info.bodyFat}%
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          }
+                          if (section === "workout") {
+                            if (info.muscleGroups.length === 0) return null;
+                            return (
+                              <div key="workout" className="space-y-px">
+                                {info.muscleGroups.map((mg) => (
+                                  <div
+                                    key={mg.name}
+                                    className="bg-sky-100 dark:bg-sky-900/30 rounded-sm px-0.5 py-px"
+                                  >
+                                    <p style={{ fontSize: `${calendarSettings.fontSize}px` }} className="text-sky-700 dark:text-sky-300 font-medium truncate text-left leading-tight">
+                                      {mg.name} {mg.count}
+                                    </p>
+                                  </div>
+                                ))}
+                              </div>
+                            );
+                          }
+                          if (section === "memo") {
+                            if (!info.memoText) return null;
+                            return (
+                              <div key="memo" className="bg-yellow-100 dark:bg-yellow-900/30 rounded-sm px-0.5 py-px">
+                                <p style={{ fontSize: `${calendarSettings.fontSize}px` }} className="text-yellow-800 dark:text-yellow-300 truncate text-left leading-tight">
+                                  {info.memoText}
+                                </p>
+                              </div>
+                            );
+                          }
+                          return null;
+                        })}
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          );
+        })}
+      </div>
+    );
+  }, [calendarSettings, getRowFlex, getWeekStats, getDayInfo, isTodayDate, isSelected, handleDateClick, formatDuration]);
 
   const dayWorkouts = useMemo(() => {
     return workouts.filter((w) =>
@@ -1478,8 +1692,9 @@ export default function DashboardPage() {
         <div
           ref={calendarRef}
           className="flex flex-col select-none overflow-hidden"
-          onTouchStart={handleTouchStart}
-          onTouchEnd={handleTouchEnd}
+          onTouchStart={handleSwipeTouchStart}
+          onTouchMove={handleSwipeTouchMove}
+          onTouchEnd={handleSwipeTouchEnd}
           style={{
             flex: detailOpen ? "0 0 0px" : "1 1 auto",
             opacity: detailOpen ? 0 : 1,
@@ -1498,141 +1713,25 @@ export default function DashboardPage() {
               </div>
             ))}
           </div>
-          <div className="flex-1 flex flex-col">
-            {weeks.map((week, wIdx) => {
-              const stats = getWeekStats(week);
-              return (
-                <div
-                  key={wIdx}
-                  className="grid grid-cols-[2.2rem_repeat(7,1fr)] border-b border-border/30"
-                  style={{
-                    flex: getRowFlex(wIdx),
-                    minHeight: 0,
-                    transition: "flex 0.3s ease",
-                  }}
-                >
-                  <div className="flex flex-col items-center justify-start pt-1.5 text-center border-r border-border/20">
-                    <span className="text-[9px] font-semibold text-muted-foreground/80 leading-tight">
-                      {week.weekNumber}주
-                    </span>
-                    {calendarSettings.showDuration && stats.duration > 0 && (
-                      <span className="text-[8px] text-muted-foreground/60 leading-tight mt-0.5">
-                        {formatDuration(stats.duration)}
-                      </span>
-                    )}
-                    {stats.setCount > 0 && (
-                      <span className="text-[8px] text-muted-foreground/60 leading-tight">
-                        {stats.setCount}s
-                      </span>
-                    )}
-                  </div>
-                  {week.days.map((cell, dIdx) => {
-                    const { date, isCurrentMonth } = cell;
-                    const info = getDayInfo(date);
-                    const todayDate = isTodayDate(date);
-                    const sel = isSelected(date);
-                    const isSunday = date.getDay() === 0;
-                    const isSaturday = date.getDay() === 6;
-                    return (
-                      <button
-                        key={`${wIdx}-${dIdx}`}
-                        className={`p-0.5 flex flex-col items-center transition-colors overflow-hidden ${sel ? "bg-primary/5" : ""} ${!isCurrentMonth ? "opacity-40" : ""}`}
-                        onClick={() => handleDateClick(date)}
-                        data-testid={`button-date-${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`}
-                      >
-                        <div
-                          className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium shrink-0 ${
-                            todayDate
-                              ? "bg-primary text-primary-foreground"
-                              : sel
-                                ? "bg-primary/20 text-primary"
-                                : isSunday
-                                  ? "text-red-400"
-                                  : isSaturday
-                                    ? "text-blue-400"
-                                    : "text-foreground"
-                          }`}
-                        >
-                          {date.getDate()}
-                        </div>
-                        {info && isCurrentMonth && (
-                          <div className="w-full mt-0.5 space-y-px overflow-hidden">
-                            {calendarSettings.showDuration && info.duration > 0 && (
-                              <div className="bg-sky-50 dark:bg-sky-900/20 rounded-sm px-0.5 py-px">
-                                <p style={{ fontSize: `${calendarSettings.fontSize}px` }} className="text-sky-600 dark:text-sky-400 font-medium truncate text-left leading-tight">
-                                  {formatDuration(info.duration)}
-                                </p>
-                              </div>
-                            )}
-                            {calendarSettings.displayOrder.map((section) => {
-                              if (section === "body") {
-                                const showW = calendarSettings.showBodyWeight && info.bodyWeight != null;
-                                const showS = calendarSettings.showBodySkeletalMuscle && info.bodySkeletalMuscle != null;
-                                const showF = calendarSettings.showBodyFat && info.bodyFat != null;
-                                if (!showW && !showS && !showF) return null;
-                                return (
-                                  <div key="body" className="space-y-px">
-                                    {showW && (
-                                      <div className="bg-emerald-100 dark:bg-emerald-900/30 rounded-sm px-0.5 py-px">
-                                        <p style={{ fontSize: `${calendarSettings.fontSize}px` }} className="text-emerald-700 dark:text-emerald-300 font-medium truncate text-left leading-tight">
-                                          체중 {info.bodyWeight}kg
-                                        </p>
-                                      </div>
-                                    )}
-                                    {showS && (
-                                      <div className="bg-emerald-100 dark:bg-emerald-900/30 rounded-sm px-0.5 py-px">
-                                        <p style={{ fontSize: `${calendarSettings.fontSize}px` }} className="text-emerald-700 dark:text-emerald-300 font-medium truncate text-left leading-tight">
-                                          골격근 {info.bodySkeletalMuscle}kg
-                                        </p>
-                                      </div>
-                                    )}
-                                    {showF && (
-                                      <div className="bg-emerald-100 dark:bg-emerald-900/30 rounded-sm px-0.5 py-px">
-                                        <p style={{ fontSize: `${calendarSettings.fontSize}px` }} className="text-emerald-700 dark:text-emerald-300 font-medium truncate text-left leading-tight">
-                                          체지방 {info.bodyFat}%
-                                        </p>
-                                      </div>
-                                    )}
-                                  </div>
-                                );
-                              }
-                              if (section === "workout") {
-                                if (info.muscleGroups.length === 0) return null;
-                                return (
-                                  <div key="workout" className="space-y-px">
-                                    {info.muscleGroups.map((mg) => (
-                                      <div
-                                        key={mg.name}
-                                        className="bg-sky-100 dark:bg-sky-900/30 rounded-sm px-0.5 py-px"
-                                      >
-                                        <p style={{ fontSize: `${calendarSettings.fontSize}px` }} className="text-sky-700 dark:text-sky-300 font-medium truncate text-left leading-tight">
-                                          {mg.name} {mg.count}
-                                        </p>
-                                      </div>
-                                    ))}
-                                  </div>
-                                );
-                              }
-                              if (section === "memo") {
-                                if (!info.memoText) return null;
-                                return (
-                                  <div key="memo" className="bg-yellow-100 dark:bg-yellow-900/30 rounded-sm px-0.5 py-px">
-                                    <p style={{ fontSize: `${calendarSettings.fontSize}px` }} className="text-yellow-800 dark:text-yellow-300 truncate text-left leading-tight">
-                                      {info.memoText}
-                                    </p>
-                                  </div>
-                                );
-                              }
-                              return null;
-                            })}
-                          </div>
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              );
-            })}
+          <div className="flex-1 overflow-hidden relative">
+            <div
+              className="flex h-full"
+              style={{
+                width: "300%",
+                transform: `translateX(calc(-33.3333% + ${swipeOffset}px))`,
+                transition: swipeAnimating || swipeOffset === 0 ? "transform 0.28s cubic-bezier(0.25,0.46,0.45,0.94)" : "none",
+              }}
+            >
+              <div className="flex flex-col" style={{ width: "33.3333%" }}>
+                {renderCalendarGrid(prevWeeks, prevMonthDate.getFullYear(), prevMonthDate.getMonth(), false)}
+              </div>
+              <div className="flex flex-col" style={{ width: "33.3333%" }}>
+                {renderCalendarGrid(weeks, year, month, true)}
+              </div>
+              <div className="flex flex-col" style={{ width: "33.3333%" }}>
+                {renderCalendarGrid(nextWeeks, nextMonthDate.getFullYear(), nextMonthDate.getMonth(), false)}
+              </div>
+            </div>
           </div>
         </div>
 
