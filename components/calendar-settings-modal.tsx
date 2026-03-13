@@ -4,7 +4,7 @@ import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Slider } from "@/components/ui/slider";
-import { GripVertical, Check } from "lucide-react";
+import { GripVertical, Check, BookOpen } from "lucide-react";
 import type { CalendarSettings, CalendarDisplayItem } from "@/lib/types";
 import { QUOTE_ICON_OPTIONS } from "@/lib/types";
 
@@ -44,9 +44,9 @@ export function CalendarSettingsModal({
     [settings, onSettingsChange],
   );
 
-  const handleDurationToggle = useCallback(
-    (checked: boolean) => {
-      onSettingsChange({ ...settings, showDuration: checked });
+  const handleBodyToggle = useCallback(
+    (field: "showBodyWeight" | "showBodySkeletalMuscle" | "showBodyFat", checked: boolean) => {
+      onSettingsChange({ ...settings, [field]: checked });
     },
     [settings, onSettingsChange],
   );
@@ -152,16 +152,32 @@ export function CalendarSettingsModal({
           </div>
 
           <div className="border-t pt-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-bold">운동 시간 표시</span>
-                <span className="text-muted-foreground text-sm">Σ</span>
+            <h3 className="text-sm font-bold mb-3">신체정보 표시</h3>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-foreground">체중</span>
+                <Switch
+                  checked={settings.showBodyWeight}
+                  onCheckedChange={(c) => handleBodyToggle("showBodyWeight", c)}
+                  data-testid="toggle-show-body-weight"
+                />
               </div>
-              <Switch
-                checked={settings.showDuration}
-                onCheckedChange={handleDurationToggle}
-                data-testid="toggle-show-duration"
-              />
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-foreground">골격근량</span>
+                <Switch
+                  checked={settings.showBodySkeletalMuscle}
+                  onCheckedChange={(c) => handleBodyToggle("showBodySkeletalMuscle", c)}
+                  data-testid="toggle-show-body-skeletal-muscle"
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-foreground">체지방률</span>
+                <Switch
+                  checked={settings.showBodyFat}
+                  onCheckedChange={(c) => handleBodyToggle("showBodyFat", c)}
+                  data-testid="toggle-show-body-fat"
+                />
+              </div>
             </div>
           </div>
 
@@ -212,6 +228,16 @@ export function CalendarSettingsModal({
                 </button>
               ))}
             </div>
+            <a
+              href="https://comic.naver.com/webtoon/list?titleId=769209"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-3 flex items-center justify-center gap-2 w-full py-2.5 rounded-lg bg-[#00C73C] hover:bg-[#00b336] text-white text-sm font-bold transition-colors"
+              data-testid="link-webtoon"
+            >
+              <BookOpen className="h-4 w-4" />
+              웹툰 화산귀환 보러가기
+            </a>
           </div>
         </div>
 

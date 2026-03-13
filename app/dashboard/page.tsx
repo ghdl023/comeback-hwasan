@@ -1565,25 +1565,27 @@ export default function DashboardPage() {
                             )}
                             {calendarSettings.displayOrder.map((section) => {
                               if (section === "body") {
-                                const hasBody = info.bodyWeight != null || info.bodySkeletalMuscle != null || info.bodyFat != null;
-                                if (!hasBody) return null;
+                                const showW = calendarSettings.showBodyWeight && info.bodyWeight != null;
+                                const showS = calendarSettings.showBodySkeletalMuscle && info.bodySkeletalMuscle != null;
+                                const showF = calendarSettings.showBodyFat && info.bodyFat != null;
+                                if (!showW && !showS && !showF) return null;
                                 return (
                                   <div key="body" className="space-y-px">
-                                    {info.bodyWeight != null && (
+                                    {showW && (
                                       <div className="bg-emerald-100 dark:bg-emerald-900/30 rounded-sm px-0.5 py-px">
                                         <p style={{ fontSize: `${calendarSettings.fontSize}px` }} className="text-emerald-700 dark:text-emerald-300 font-medium truncate text-left leading-tight">
                                           체중 {info.bodyWeight}kg
                                         </p>
                                       </div>
                                     )}
-                                    {info.bodySkeletalMuscle != null && (
+                                    {showS && (
                                       <div className="bg-emerald-100 dark:bg-emerald-900/30 rounded-sm px-0.5 py-px">
                                         <p style={{ fontSize: `${calendarSettings.fontSize}px` }} className="text-emerald-700 dark:text-emerald-300 font-medium truncate text-left leading-tight">
                                           골격근 {info.bodySkeletalMuscle}kg
                                         </p>
                                       </div>
                                     )}
-                                    {info.bodyFat != null && (
+                                    {showF && (
                                       <div className="bg-emerald-100 dark:bg-emerald-900/30 rounded-sm px-0.5 py-px">
                                         <p style={{ fontSize: `${calendarSettings.fontSize}px` }} className="text-emerald-700 dark:text-emerald-300 font-medium truncate text-left leading-tight">
                                           체지방 {info.bodyFat}%

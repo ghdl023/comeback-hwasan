@@ -144,6 +144,9 @@ export interface CalendarSettings {
   fontSize: number;
   displayOrder: CalendarDisplayItem[];
   showDuration: boolean;
+  showBodyWeight: boolean;
+  showBodySkeletalMuscle: boolean;
+  showBodyFat: boolean;
   quoteIntervalSeconds: number;
   quoteIconId: string;
 }

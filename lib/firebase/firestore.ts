@@ -440,6 +440,9 @@ export const DEFAULT_CALENDAR_SETTINGS: CalendarSettings = {
   fontSize: 8,
   displayOrder: ["workout", "body", "memo"],
   showDuration: true,
+  showBodyWeight: true,
+  showBodySkeletalMuscle: true,
+  showBodyFat: true,
   quoteIntervalSeconds: 30,
   quoteIconId: "cm01",
 };
@@ -475,6 +478,9 @@ export async function getCalendarSettings(userId: string): Promise<CalendarSetti
     fontSize,
     displayOrder: normalizeDisplayOrder(data.displayOrder),
     showDuration: typeof data.showDuration === "boolean" ? data.showDuration : DEFAULT_CALENDAR_SETTINGS.showDuration,
+    showBodyWeight: typeof data.showBodyWeight === "boolean" ? data.showBodyWeight : DEFAULT_CALENDAR_SETTINGS.showBodyWeight,
+    showBodySkeletalMuscle: typeof data.showBodySkeletalMuscle === "boolean" ? data.showBodySkeletalMuscle : DEFAULT_CALENDAR_SETTINGS.showBodySkeletalMuscle,
+    showBodyFat: typeof data.showBodyFat === "boolean" ? data.showBodyFat : DEFAULT_CALENDAR_SETTINGS.showBodyFat,
     quoteIntervalSeconds,
     quoteIconId,
   };
