@@ -24,6 +24,7 @@ app/                    - Next.js pages (App Router)
   workouts/             - Workout CRUD (list/create/detail)
     date/[date]/page.tsx - Date-based workout detail (standalone, kept for direct link)
     new/page.tsx        - New workout with exercise selector (redirects back to dashboard)
+  notes/                - Global notes (list/create/edit - date-independent)
   exercises/            - Exercise library management
 components/             - React components
   auth-provider.tsx     - Firebase Auth context provider (Google popup)
@@ -57,6 +58,7 @@ middleware.ts           - Next.js middleware (passthrough — auth is client-sid
 - `body_records` - Daily body measurements (user_id, date, weight, skeletal_muscle, body_fat, created_at)
   - Doc ID: `{user_id}_{date}` for deterministic upsert (no duplicates)
 - `memos` - Daily memos (user_id, date, content, show_on_calendar, created_at)
+- `notes` - Global notes (user_id, title, content, created_at, updated_at) — date-independent free-form notes
 - `user_settings` - Per-user calendar settings (Doc ID: `{user_id}`, fields: fontSize, displayOrder, showDuration)
 
 ## Muscle Groups (13)

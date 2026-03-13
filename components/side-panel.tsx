@@ -10,10 +10,12 @@ import {
   ListChecks,
   LogOut,
   X,
+  StickyNote,
 } from "lucide-react";
 
 const baseMenuItems = [
   { href: "/dashboard", label: "홈", icon: Home },
+  { href: "/notes", label: "노트", icon: StickyNote },
 ];
 
 const adminMenuItems = [

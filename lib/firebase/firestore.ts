@@ -1,4 +1,4 @@
-import type { BodyRecord, CalendarSettings, Memo } from "@/lib/types";
+import type { BodyRecord, CalendarSettings, Memo, Note } from "@/lib/types";
 import {
   collection,
   doc,
@@ -483,4 +483,30 @@ export async function getCalendarSettings(userId: string): Promise<CalendarSetti
 export async function saveCalendarSettings(userId: string, settings: CalendarSettings): Promise<void> {
   const ref = doc(db, "user_settings", userId);
   await setDoc(ref, settings, { merge: true });
+}
+
+export async function getNotes(userId: string): Promise<Note[]> {
+  const q = query(
+    collection(db, "notes"),
+    where("user_id", "==", userId)
+  );
+  const snap = await getDocs(q);
+  const notes = snap.docs.map((d) => serializeDoc<Note>(d.id, d.data()));
+  notes.sort((a, b) => b.updated_at.localeCompare(a.updated_at));
+  return notes;
+}
+
+export async function addNote(data: Omit<Note, "id">): Promise<Note> {
+  const ref = await addDoc(collection(db, "notes"), data);
+  return { id: ref.id, ...data };
+}
+
+export async function updateNote(noteId: string, data: Partial<Pick<Note, "title" | "content" | "updated_at">>): Promise<void> {
+  const ref = doc(db, "notes", noteId);
+  await setDoc(ref, data, { merge: true });
+}
+
+export async function deleteNote(noteId: string): Promise<void> {
+  const ref = doc(db, "notes", noteId);
+  await deleteDoc(ref);
 }
