@@ -2,12 +2,14 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "@/components/auth-provider";
-import { getCalendarSettings } from "@/lib/firebase/firestore";
+import { getCalendarSettings, saveCalendarSettings } from "@/lib/firebase/firestore";
 import { getQuoteIconSrc } from "@/lib/types";
+import { X } from "lucide-react";
 
 const ICON_SIZE = 64;
 const AUTO_DISMISS_MS = 10000;
 const BUBBLE_MAX_W = 240;
+const LONG_PRESS_MS = 600;
 
 export function FloatingQuote() {
   const { user } = useAuth();
@@ -18,6 +20,8 @@ export function FloatingQuote() {
   const [currentQuote, setCurrentQuote] = useState<string | null>(null);
   const [visible, setVisible] = useState(false);
   const [fadeOut, setFadeOut] = useState(false);
+  const [hidden, setHidden] = useState(false);
+  const [showCloseBtn, setShowCloseBtn] = useState(false);
 
   const [position, setPosition] = useState({ x: -1, y: -1 });
 
@@ -28,6 +32,8 @@ export function FloatingQuote() {
   const btnRef = useRef<HTMLDivElement>(null);
   const dismissTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const autoTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const longPressTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const settingsRef = useRef<{ showQuoteIcon: boolean } | null>(null);
 
   useEffect(() => {
     if (position.x === -1 && position.y === -1) {
@@ -68,6 +74,8 @@ export function FloatingQuote() {
     getCalendarSettings(user.uid).then((s) => {
       setIntervalSeconds(s.quoteIntervalSeconds);
       setIconSrc(getQuoteIconSrc(s.quoteIconId));
+      settingsRef.current = { showQuoteIcon: s.showQuoteIcon };
+      if (!s.showQuoteIcon) setHidden(true);
     }).catch(() => {});
   }, [user?.uid]);
 
@@ -80,11 +88,17 @@ export function FloatingQuote() {
       const val = (e as CustomEvent).detail;
       if (typeof val === "string") setIconSrc(getQuoteIconSrc(val));
     };
+    const handleVisibility = (e: Event) => {
+      const val = (e as CustomEvent).detail;
+      if (typeof val === "boolean") setHidden(!val);
+    };
     window.addEventListener("quote-interval-changed", handleInterval);
     window.addEventListener("quote-icon-changed", handleIcon);
+    window.addEventListener("quote-visibility-changed", handleVisibility);
     return () => {
       window.removeEventListener("quote-interval-changed", handleInterval);
       window.removeEventListener("quote-icon-changed", handleIcon);
+      window.removeEventListener("quote-visibility-changed", handleVisibility);
     };
   }, []);
 
@@ -118,28 +132,54 @@ export function FloatingQuote() {
   }, [quotes, clearDismissTimer, dismissQuote]);
 
   useEffect(() => {
-    if (quotes.length === 0 || !user || intervalSeconds <= 0) return;
+    if (quotes.length === 0 || !user || intervalSeconds <= 0 || hidden) return;
     autoTimerRef.current = setInterval(() => {
       showRandomQuote();
     }, intervalSeconds * 1000);
     return () => {
       if (autoTimerRef.current) clearInterval(autoTimerRef.current);
     };
-  }, [quotes, user, showRandomQuote, intervalSeconds]);
+  }, [quotes, user, showRandomQuote, intervalSeconds, hidden]);
 
   const handleIconTap = useCallback(() => {
+    if (showCloseBtn) {
+      setShowCloseBtn(false);
+      return;
+    }
     if (visible) {
       dismissQuote();
     } else {
       showRandomQuote();
     }
-  }, [visible, dismissQuote, showRandomQuote]);
+  }, [visible, dismissQuote, showRandomQuote, showCloseBtn]);
+
+  const handleHideIcon = useCallback(async () => {
+    setHidden(true);
+    setShowCloseBtn(false);
+    if (visible) dismissQuote();
+    if (user?.uid) {
+      try {
+        const s = await getCalendarSettings(user.uid);
+        await saveCalendarSettings(user.uid, { ...s, showQuoteIcon: false });
+        window.dispatchEvent(new CustomEvent("quote-visibility-changed", { detail: false }));
+      } catch (err) {
+        console.error("Hide quote icon error:", err);
+      }
+    }
+  }, [user?.uid, visible, dismissQuote]);
 
   const clampPosition = useCallback((x: number, y: number) => {
     return {
       x: Math.max(0, Math.min(window.innerWidth - ICON_SIZE, x)),
       y: Math.max(0, Math.min(window.innerHeight - ICON_SIZE, y)),
     };
+  }, []);
+
+  const clearLongPress = useCallback(() => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
   }, []);
 
   const handlePointerDown = useCallback(
@@ -155,8 +195,15 @@ export function FloatingQuote() {
         posY: position.y,
       };
       (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+
+      clearLongPress();
+      longPressTimerRef.current = setTimeout(() => {
+        if (!hasDraggedRef.current) {
+          setShowCloseBtn(true);
+        }
+      }, LONG_PRESS_MS);
     },
-    [position],
+    [position, clearLongPress],
   );
 
   const handlePointerMove = useCallback(
@@ -167,6 +214,7 @@ export function FloatingQuote() {
       const dy = e.clientY - dragStartRef.current.y;
       if (Math.abs(dx) > 4 || Math.abs(dy) > 4) {
         hasDraggedRef.current = true;
+        clearLongPress();
       }
       const newPos = clampPosition(
         dragStartRef.current.posX + dx,
@@ -174,23 +222,24 @@ export function FloatingQuote() {
       );
       setPosition(newPos);
     },
-    [clampPosition],
+    [clampPosition, clearLongPress],
   );
 
   const handlePointerUp = useCallback(
     (e: React.PointerEvent) => {
       e.preventDefault();
       e.stopPropagation();
+      clearLongPress();
       const wasDragging = draggingRef.current;
       draggingRef.current = false;
-      if (wasDragging && !hasDraggedRef.current) {
+      if (wasDragging && !hasDraggedRef.current && !showCloseBtn) {
         handleIconTap();
       }
     },
-    [handleIconTap],
+    [handleIconTap, clearLongPress, showCloseBtn],
   );
 
-  if (!mounted || !user || position.x === -1) return null;
+  if (!mounted || !user || position.x === -1 || hidden) return null;
 
   const bubbleLeft = Math.max(
     8,
@@ -248,18 +297,33 @@ export function FloatingQuote() {
           top: position.y,
           width: ICON_SIZE,
           height: ICON_SIZE,
-          overflow: "hidden",
+          overflow: "visible",
         }}
         data-testid="button-floating-quote"
       >
-        <img
-          src={iconSrc}
-          alt="청명"
-          width={ICON_SIZE}
-          height={ICON_SIZE}
-          className="w-full h-full object-cover pointer-events-none rounded-full"
-          draggable={false}
-        />
+        <div className="w-full h-full rounded-full overflow-hidden">
+          <img
+            src={iconSrc}
+            alt="청명"
+            width={ICON_SIZE}
+            height={ICON_SIZE}
+            className="w-full h-full object-cover pointer-events-none"
+            draggable={false}
+          />
+        </div>
+        {showCloseBtn && (
+          <button
+            className="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-red-500 text-white flex items-center justify-center shadow-md z-10"
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleHideIcon();
+            }}
+            data-testid="button-hide-quote-icon"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        )}
       </div>
     </>
   );

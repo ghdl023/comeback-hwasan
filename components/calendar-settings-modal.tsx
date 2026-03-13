@@ -97,8 +97,8 @@ export function CalendarSettingsModal({
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
       data-testid="calendar-settings-modal"
     >
-      <div className="w-[calc(100%-2rem)] max-w-sm bg-background rounded-2xl shadow-xl overflow-hidden max-h-[80vh] overflow-y-auto">
-        <div className="px-5 pt-5 pb-4 space-y-6">
+      <div className="w-[calc(100%-2rem)] max-w-sm bg-background rounded-2xl shadow-xl overflow-hidden max-h-[80vh] flex flex-col">
+        <div className="flex-1 overflow-y-auto px-5 pt-5 pb-4 space-y-6 scrollbar-hide">
           <div>
             <h3 className="text-sm font-bold mb-3">캘린더 폰트 크기</h3>
             <div className="flex items-center gap-3">
@@ -182,6 +182,17 @@ export function CalendarSettingsModal({
           </div>
 
           <div className="border-t pt-4">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-bold">청명 아이콘 버튼 표시</span>
+              <Switch
+                checked={settings.showQuoteIcon}
+                onCheckedChange={(c) => onSettingsChange({ ...settings, showQuoteIcon: c })}
+                data-testid="toggle-show-quote-icon"
+              />
+            </div>
+          </div>
+
+          <div className="border-t pt-4">
             <h3 className="text-sm font-bold mb-3">청명 잔소리 노출 주기</h3>
             <div className="flex flex-wrap gap-2">
               {QUOTE_INTERVAL_OPTIONS.map((opt) => (
@@ -241,7 +252,7 @@ export function CalendarSettingsModal({
           </div>
         </div>
 
-        <div className="flex justify-end px-5 pb-4">
+        <div className="flex justify-end px-5 py-3 border-t shrink-0">
           <Button
             variant="ghost"
             size="sm"

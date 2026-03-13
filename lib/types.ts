@@ -168,6 +168,7 @@ export interface CalendarSettings {
   showBodyWeight: boolean;
   showBodySkeletalMuscle: boolean;
   showBodyFat: boolean;
+  showQuoteIcon: boolean;
   quoteIntervalSeconds: number;
   quoteIconId: string;
 }

@@ -443,6 +443,7 @@ export const DEFAULT_CALENDAR_SETTINGS: CalendarSettings = {
   showBodyWeight: true,
   showBodySkeletalMuscle: true,
   showBodyFat: true,
+  showQuoteIcon: true,
   quoteIntervalSeconds: 30,
   quoteIconId: "cm01",
 };
@@ -481,6 +482,7 @@ export async function getCalendarSettings(userId: string): Promise<CalendarSetti
     showBodyWeight: typeof data.showBodyWeight === "boolean" ? data.showBodyWeight : DEFAULT_CALENDAR_SETTINGS.showBodyWeight,
     showBodySkeletalMuscle: typeof data.showBodySkeletalMuscle === "boolean" ? data.showBodySkeletalMuscle : DEFAULT_CALENDAR_SETTINGS.showBodySkeletalMuscle,
     showBodyFat: typeof data.showBodyFat === "boolean" ? data.showBodyFat : DEFAULT_CALENDAR_SETTINGS.showBodyFat,
+    showQuoteIcon: typeof data.showQuoteIcon === "boolean" ? data.showQuoteIcon : DEFAULT_CALENDAR_SETTINGS.showQuoteIcon,
     quoteIntervalSeconds,
     quoteIconId,
   };

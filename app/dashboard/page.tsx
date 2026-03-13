@@ -855,6 +855,7 @@ export default function DashboardPage() {
       }, 500);
       window.dispatchEvent(new CustomEvent("quote-interval-changed", { detail: newSettings.quoteIntervalSeconds }));
       window.dispatchEvent(new CustomEvent("quote-icon-changed", { detail: newSettings.quoteIconId }));
+      window.dispatchEvent(new CustomEvent("quote-visibility-changed", { detail: newSettings.showQuoteIcon }));
     },
     [user],
   );
