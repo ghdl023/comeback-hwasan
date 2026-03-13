@@ -28,8 +28,8 @@ import {
   Timer,
   Circle,
   Pause,
-  Youtube,
 } from "lucide-react";
+import { SiYoutube } from "react-icons/si";
 
 interface DayExerciseInfo {
   exerciseId: string;
@@ -393,10 +393,8 @@ export function SetEditor({
           <div className="flex items-center gap-2">
             <Dumbbell className="h-5 w-5 text-primary" />
             <h2 className="text-lg font-bold flex-1">{exercise?.name || "운동"}</h2>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 shrink-0 text-red-500 hover:text-red-600 hover:bg-red-50"
+            <button
+              className="shrink-0 active:scale-90 transition-transform"
               onClick={() => {
                 const name = exercise?.name || "운동";
                 const searchName = name.includes(":") ? name.split(":")[0] : name;
@@ -405,8 +403,8 @@ export function SetEditor({
               }}
               data-testid="button-youtube-search"
             >
-              <Youtube className="h-5 w-5" />
-            </Button>
+              <SiYoutube className="h-7 w-7 text-[#FF0000]" />
+            </button>
           </div>
           {exercise?.muscle_group && (
             <Badge variant="outline" className="text-xs h-5 px-2 mt-1">
