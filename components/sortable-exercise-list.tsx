@@ -79,19 +79,23 @@ function SortableExerciseCard({
 
   return (
     <div ref={setNodeRef} style={style}>
-      <Card className="overflow-hidden" data-testid={`card-exercise-${exerciseId}`}>
+      <Card
+        className="overflow-hidden cursor-pointer active:bg-muted/20 transition-colors"
+        onClick={onEdit}
+        data-testid={`card-exercise-${exerciseId}`}
+      >
         <div className="flex items-center gap-2 px-1 py-2.5">
           <button
             className="flex items-center justify-center w-8 h-8 shrink-0 cursor-grab active:cursor-grabbing touch-none text-muted-foreground/50"
             {...attributes}
             {...listeners}
+            onClick={(e) => e.stopPropagation()}
             data-testid={`drag-handle-${exerciseId}`}
           >
             <GripVertical className="h-4 w-4" />
           </button>
           <div
-            className="flex items-center gap-3 flex-1 min-w-0 cursor-pointer active:bg-muted/30 transition-colors rounded-md px-1.5 py-0.5"
-            onClick={onEdit}
+            className="flex items-center gap-3 flex-1 min-w-0 px-1.5 py-0.5"
             data-testid={`button-exercise-card-${exerciseId}`}
           >
             <div className={`flex items-center justify-center w-7 h-7 rounded-lg shrink-0 ${allCompleted ? "bg-emerald-500/10" : "bg-primary/10"}`}>
