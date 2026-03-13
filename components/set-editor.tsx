@@ -28,6 +28,7 @@ import {
   Timer,
   Circle,
   Pause,
+  Youtube,
 } from "lucide-react";
 
 interface DayExerciseInfo {
@@ -391,7 +392,19 @@ export function SetEditor({
         <div className="px-4 py-3 border-b">
           <div className="flex items-center gap-2">
             <Dumbbell className="h-5 w-5 text-primary" />
-            <h2 className="text-lg font-bold">{exercise?.name || "운동"}</h2>
+            <h2 className="text-lg font-bold flex-1">{exercise?.name || "운동"}</h2>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 shrink-0 text-red-500 hover:text-red-600 hover:bg-red-50"
+              onClick={() => {
+                const q = encodeURIComponent(`${exercise?.name || "운동"} 운동 자세`);
+                window.open(`https://www.youtube.com/results?search_query=${q}&sp=EgIYAQ%253D%253D`, "_blank");
+              }}
+              data-testid="button-youtube-search"
+            >
+              <Youtube className="h-5 w-5" />
+            </Button>
           </div>
           {exercise?.muscle_group && (
             <Badge variant="outline" className="text-xs h-5 px-2 mt-1">
