@@ -46,6 +46,7 @@ import { SortableExerciseList } from "@/components/sortable-exercise-list";
 import { FloatingTimer } from "@/components/floating-timer";
 import { WorkoutHistoryCalendar } from "@/components/workout-history-calendar";
 import { CalendarSettingsModal } from "@/components/calendar-settings-modal";
+import { BodyInfoChart } from "@/components/body-info-chart";
 import { useRestTimer } from "@/components/rest-timer-context";
 import {
   Loader2,
@@ -120,6 +121,7 @@ export default function DashboardPage() {
   const [skeletalMuscle, setSkeletalMuscle] = useState("");
   const [bodyFat, setBodyFat] = useState("");
   const [bodySaving, setBodySaving] = useState(false);
+  const [bodyChartRefreshKey, setBodyChartRefreshKey] = useState(0);
 
   const [memos, setMemos] = useState<Memo[]>([]);
   const [memoAddOpen, setMemoAddOpen] = useState(false);
@@ -302,6 +304,7 @@ export default function DashboardPage() {
           return [...filtered, saved];
         });
       }
+      setBodyChartRefreshKey((k) => k + 1);
     } catch (err) {
       console.error("Body record save error:", err);
     } finally {
@@ -1215,6 +1218,13 @@ export default function DashboardPage() {
             </div>
           </div>
         </Card>
+
+        <div className="mt-4">
+          <h2 className="text-sm font-bold mb-3" data-testid="text-body-chart-section">
+            신체정보 변화 추이
+          </h2>
+          <BodyInfoChart userId={user?.uid || ""} refreshKey={bodyChartRefreshKey} />
+        </div>
       </div>
     </div>
   );

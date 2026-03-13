@@ -358,6 +358,17 @@ export async function getLatestBodyRecord(userId: string): Promise<BodyRecord | 
   return records[0];
 }
 
+export async function getAllBodyRecords(userId: string): Promise<BodyRecord[]> {
+  const q = query(
+    collection(db, "body_records"),
+    where("user_id", "==", userId)
+  );
+  const snap = await getDocs(q);
+  const records = snap.docs.map((d) => serializeDoc<BodyRecord>(d.id, d.data()));
+  records.sort((a, b) => a.date.localeCompare(b.date));
+  return records;
+}
+
 export async function getBodyRecordsByMonth(
   userId: string,
   year: number,
