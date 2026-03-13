@@ -11,11 +11,15 @@ import {
   LogOut,
   X,
   StickyNote,
+  Lightbulb,
+  Bug,
 } from "lucide-react";
 
 const baseMenuItems = [
   { href: "/dashboard", label: "홈", icon: Home },
   { href: "/notes", label: "노트", icon: StickyNote },
+  { href: "/features", label: "기능 요청", icon: Lightbulb },
+  { href: "/bugs", label: "버그 제보", icon: Bug },
 ];
 
 const adminMenuItems = [

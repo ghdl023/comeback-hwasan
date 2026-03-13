@@ -1,4 +1,4 @@
-import type { BodyRecord, CalendarSettings, Memo, Note } from "@/lib/types";
+import type { BodyRecord, CalendarSettings, Memo, Note, FeatureRequest, FeatureRequestStatus, BugReport, BugReportStatus } from "@/lib/types";
 import {
   collection,
   doc,
@@ -515,4 +515,48 @@ export async function updateNote(noteId: string, data: Partial<Pick<Note, "title
 export async function deleteNote(noteId: string): Promise<void> {
   const ref = doc(db, "notes", noteId);
   await deleteDoc(ref);
+}
+
+export async function getFeatureRequests(userId?: string): Promise<FeatureRequest[]> {
+  let q;
+  if (userId) {
+    q = query(collection(db, "features"), where("user_id", "==", userId), orderBy("created_at", "desc"));
+  } else {
+    q = query(collection(db, "features"), orderBy("created_at", "desc"));
+  }
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => serializeDoc<FeatureRequest>(d.id, d.data()));
+}
+
+export async function addFeatureRequest(data: { user_id: string; user_email: string; content: string }): Promise<FeatureRequest> {
+  const now = new Date().toISOString();
+  const docRef = await addDoc(collection(db, "features"), { ...data, status: "접수", created_at: now });
+  return { id: docRef.id, ...data, status: "접수" as FeatureRequestStatus, created_at: now };
+}
+
+export async function updateFeatureRequestStatus(id: string, status: FeatureRequestStatus): Promise<void> {
+  const ref = doc(db, "features", id);
+  await updateDoc(ref, { status });
+}
+
+export async function getBugReports(userId?: string): Promise<BugReport[]> {
+  let q;
+  if (userId) {
+    q = query(collection(db, "bugs"), where("user_id", "==", userId), orderBy("created_at", "desc"));
+  } else {
+    q = query(collection(db, "bugs"), orderBy("created_at", "desc"));
+  }
+  const snap = await getDocs(q);
+  return snap.docs.map((d) => serializeDoc<BugReport>(d.id, d.data()));
+}
+
+export async function addBugReport(data: { user_id: string; user_email: string; content: string }): Promise<BugReport> {
+  const now = new Date().toISOString();
+  const docRef = await addDoc(collection(db, "bugs"), { ...data, status: "접수", created_at: now });
+  return { id: docRef.id, ...data, status: "접수" as BugReportStatus, created_at: now };
+}
+
+export async function updateBugReportStatus(id: string, status: BugReportStatus): Promise<void> {
+  const ref = doc(db, "bugs", id);
+  await updateDoc(ref, { status });
 }

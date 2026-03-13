@@ -1,5 +1,26 @@
 export type UserRole = "user" | "super_admin";
 
+export type FeatureRequestStatus = "접수" | "개선완료";
+export type BugReportStatus = "접수" | "수정완료";
+
+export interface FeatureRequest {
+  id: string;
+  user_id: string;
+  user_email: string;
+  content: string;
+  status: FeatureRequestStatus;
+  created_at: string;
+}
+
+export interface BugReport {
+  id: string;
+  user_id: string;
+  user_email: string;
+  content: string;
+  status: BugReportStatus;
+  created_at: string;
+}
+
 export interface AppUser {
   uid: string;
   email: string;
