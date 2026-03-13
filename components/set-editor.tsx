@@ -398,7 +398,9 @@ export function SetEditor({
               size="icon"
               className="h-8 w-8 shrink-0 text-red-500 hover:text-red-600 hover:bg-red-50"
               onClick={() => {
-                const q = encodeURIComponent(`${exercise?.name || "운동"} 운동 자세`);
+                const name = exercise?.name || "운동";
+                const searchName = name.includes(":") ? name.split(":")[0] : name;
+                const q = encodeURIComponent(searchName);
                 window.open(`https://www.youtube.com/results?search_query=${q}&sp=EgIYAQ%253D%253D`, "_blank");
               }}
               data-testid="button-youtube-search"
